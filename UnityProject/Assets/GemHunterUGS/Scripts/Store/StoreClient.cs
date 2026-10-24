@@ -37,6 +37,12 @@ namespace GemHunterUGS.Scripts.Store
         /// <summary>A purchase ended without delivery (cancelled, failed, refused or pending): the UI can unlock.</summary>
         public event Action PurchaseNotDelivered;
 
+        /// <summary>Short status for the player: pending validation, awaiting approval, refused, late delivery.</summary>
+        public event Action<string> PurchaseMessage;
+
+        // True while the player waits on PurchaseAsync; other results are recoveries (previous payment, retry).
+        private bool m_IsWaitingForPurchase;
+
         private void Start()
         {
             if (m_StoreUIController == null)
@@ -52,8 +58,9 @@ namespace GemHunterUGS.Scripts.Store
             m_StoreUIController.ClickPurchaseMegaPack += HandleMegaPackPurchase;
             m_StoreUIController.ClickPurchaseCoinPack += HandleCoinPackPurchase;
             m_StoreUIController.ClickPurchaseFreeCoinPack += HandleCoinPackFreePurchase;
+            m_PurchaseService.PurchaseCompleted += HandlePurchaseCompleted;
 
-            // Opening the store is an explicit occasion to re-validate purchases left pending.
+            // Loading the hub is an explicit occasion to re-validate purchases left pending.
             RetryPendingPurchases();
         }
 
@@ -61,6 +68,11 @@ namespace GemHunterUGS.Scripts.Store
         {
             m_WaitCancellation.Cancel();
             m_WaitCancellation.Dispose();
+
+            if (m_PurchaseService != null)
+            {
+                m_PurchaseService.PurchaseCompleted -= HandlePurchaseCompleted;
+            }
 
             if (m_StoreUIController == null)
             {
@@ -92,6 +104,7 @@ namespace GemHunterUGS.Scripts.Store
 
         private async void Purchase(string productId)
         {
+            m_IsWaitingForPurchase = true;
             try
             {
                 var result = await m_PurchaseService.PurchaseAsync(productId, m_WaitCancellation.Token);
@@ -103,11 +116,50 @@ namespace GemHunterUGS.Scripts.Store
 
                 Logger.LogWarning($"Purchase not delivered: {result}");
                 PurchaseNotDelivered?.Invoke();
+
+                var message = MessageFor(result.Outcome);
+                if (message != null)
+                {
+                    PurchaseMessage?.Invoke(message);
+                }
             }
             catch (Exception e)
             {
                 Logger.LogException(e);
                 PurchaseNotDelivered?.Invoke();
+            }
+            finally
+            {
+                m_IsWaitingForPurchase = false;
+            }
+        }
+
+        // Results the player did not wait for: a payment from a previous session or a retried validation.
+        private void HandlePurchaseCompleted(PurchaseResult result)
+        {
+            if (!m_IsWaitingForPurchase && result.Outcome == PurchaseOutcome.Delivered)
+            {
+                PurchaseMessage?.Invoke($"Purchase delivered: {result.ProductId}");
+            }
+        }
+
+        private static string MessageFor(PurchaseOutcome outcome)
+        {
+            switch (outcome)
+            {
+                case PurchaseOutcome.RetryLater:
+                    return "Payment received. Delivery will complete automatically.";
+                case PurchaseOutcome.Deferred:
+                    return "Purchase awaiting approval.";
+                case PurchaseOutcome.Rejected:
+                    return "Purchase could not be validated.";
+                case PurchaseOutcome.Unavailable:
+                    return "Store unavailable. Please try again later.";
+                case PurchaseOutcome.Failed:
+                    return "Purchase failed.";
+                default:
+                    // Cancelled by the player, or another purchase still running: nothing to say.
+                    return null;
             }
         }
 

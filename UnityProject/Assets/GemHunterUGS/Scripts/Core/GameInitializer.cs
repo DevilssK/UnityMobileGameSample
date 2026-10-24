@@ -161,6 +161,8 @@ namespace GemHunterUGS.Scripts.Core
             var purchaseService = new PurchaseCoordinator(storeGateway, fulfillment, Logger.Log);
 
             authenticationManager.SignedIn += () => RetryPendingPurchases(purchaseService);
+            // An expired token makes validation fail (RetryLater); the resumed session must retry it too.
+            authenticationManager.SignedInAfterTokenExpiry += () => RetryPendingPurchases(purchaseService);
             ConnectStore(storeGateway);
             return purchaseService;
         }

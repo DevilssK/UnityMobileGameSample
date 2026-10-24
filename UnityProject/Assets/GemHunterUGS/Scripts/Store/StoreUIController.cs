@@ -88,6 +88,7 @@ namespace GemHunterUGS.Scripts.Store
             
             m_StoreClient.SuccessfullyPurchased += HandlePurchaseSuccess;
             m_StoreClient.PurchaseNotDelivered += HandlePurchaseNotDelivered;
+            m_StoreClient.PurchaseMessage += m_StoreView.ShowPurchaseSuccessPopUp;
             m_StoreView.ClosePopUpButton.clicked += HandleClosePurchaseSuccessPopup;
             
             SetupCoinPackButton(m_StoreView.CoinPack100Button, 100);
@@ -116,20 +117,21 @@ namespace GemHunterUGS.Scripts.Store
         
         private void HandleBundlePackPurchaseClick()
         {
-            ClickPurchaseBundlePack?.Invoke();
+            // Disable before raising: a purchase that ends synchronously (store not ready) re-enables it.
             m_StoreView.DeactivatePurchaseButton(m_StoreView.BundlePackPurchaseButton);
+            ClickPurchaseBundlePack?.Invoke();
         }
 
         private void HandleMegaPackPurchaseClick()
         {
-            ClickPurchaseMegaPack?.Invoke();
             m_StoreView.DeactivatePurchaseButton(m_StoreView.MegaPackPurchaseButton);
+            ClickPurchaseMegaPack?.Invoke();
         }
 
         private void HandleCoinPackPurchaseClick(int amount, Button button)
         {
-            ClickPurchaseCoinPack?.Invoke(amount);
             m_StoreView.DeactivatePurchaseButton(button);
+            ClickPurchaseCoinPack?.Invoke(amount);
         }
         
         private void HandleCoinPackFreePurchaseClick()
@@ -139,8 +141,8 @@ namespace GemHunterUGS.Scripts.Store
                 Debug.LogWarning($"Player has already purchased free coin pack!");
                 return;
             }
-            ClickPurchaseFreeCoinPack?.Invoke();
             m_StoreView.DeactivatePurchaseButton(m_StoreView.CoinPackFreeButton);
+            ClickPurchaseFreeCoinPack?.Invoke();
         }
         
         private void HandleCloseStoreMenuButtonClicked()
@@ -211,6 +213,7 @@ namespace GemHunterUGS.Scripts.Store
             m_StoreView.ClosePopUpButton.clicked -= HandleClosePurchaseSuccessPopup;
             m_StoreClient.SuccessfullyPurchased -= HandlePurchaseSuccess;
             m_StoreClient.PurchaseNotDelivered -= HandlePurchaseNotDelivered;
+            m_StoreClient.PurchaseMessage -= m_StoreView.ShowPurchaseSuccessPopUp;
 
             foreach (var kvp in m_CoinPackHandlers)
             {
