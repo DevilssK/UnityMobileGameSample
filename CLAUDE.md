@@ -11,7 +11,7 @@ Contrat de travail complet : `Doc/CLAUDE_UNITY_MOBILE_FOUNDATION.md`. Le lire (a
 | `SharedPackages/com.studio.mobilefoundation/` | Package UPM commun (à créer à l'étape C) |
 | `Doc/` | Brief, décisions (`Doc/decisions/`), guides |
 
-Éditeurs installés : Unity `6000.3.26f1`, `6000.6.5f1` (`C:/Program Files/Unity/Hub/Editor/`). .NET SDK 10. La version cible n'est pas encore figée.
+Éditeurs installés : Unity `6000.3.26f1`, `6000.6.5f1`, `6000.6.7f1` (`C:/Program Files/Unity/Hub/Editor/`). .NET SDK 10. Version cible : Unity `6000.6.7f1` (décision 0005, matrice dans `Doc/dependencies.md`).
 
 ## Règles non négociables
 
