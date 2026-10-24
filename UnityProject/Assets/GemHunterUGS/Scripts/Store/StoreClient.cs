@@ -1,255 +1,144 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Threading;
+using DevilCorp.MobileFoundation.Purchases;
 using UnityEngine;
-using UnityEngine.Purchasing;
-using UnityEngine.Purchasing.Extension;
 using GemHunterUGS.Scripts.Core;
 using GemHunterUGS.Scripts.PlayerEconomyManagement;
-using Unity.Services.CloudCode.GeneratedBindings.GemHunterUGSCloud.Models;
-using GemHunterUGS.Scripts.Utilities;
 using Logger = GemHunterUGS.Scripts.Utilities.Logger;
 
 namespace GemHunterUGS.Scripts.Store
 {
     /// <summary>
-    /// Handles in-app purchases using Unity's IAP system, managing product initialization, purchase processing,
-    /// and server-side validation. This client interfaces with platform-specific stores (e.g., Google Play)
-    /// and ensures purchase integrity through cloud validation.
-    /// 
-    /// Key responsibilities:
-    /// - Initializes store products and pricing
-    /// - Processes purchase transactions
-    /// - Validates purchases with cloud backend
-    /// - Updates player economy data after successful purchases
-    /// 
-    /// Supported product types:
-    /// - Coin packs (various denominations)
-    /// - Bundle packs
-    /// - Mega packs
+    /// Bridges the store UI to the foundation purchase service. It never talks to the store SDK and never
+    /// grants anything: purchases go through <see cref="IPurchaseService"/>, which validates them server-side
+    /// before confirming them with the store.
     /// </summary>
-    public class StoreClient : MonoBehaviour, IDetailedStoreListener
+    public class StoreClient : MonoBehaviour
     {
         [SerializeField]
         private StoreUIController m_StoreUIController;
 
-        // Product IDs should match the IDs configured in the Unity Dashboard
+        // Product IDs must match the Economy real-money purchase IDs
         [SerializeField]
-        private string m_BundlePackProductID = "BUNDLE_PACK";
+        private string m_BundlePackProductID = GemHunterProductCatalog.k_BundlePack;
         [SerializeField]
-        private string m_MegaPackProductID = "MEGA_PACK";
-        
-        private readonly Dictionary<int, string> m_CoinPackProducts = new()
-        {
-            { 100, "COIN_PACK_100" },
-            { 500, "COIN_PACK_500" },
-            { 1000, "COIN_PACK_1000" },
-            { 5000, "COIN_PACK_5000" },
-            { 10000, "COIN_PACK_10000" }
-        };
-        
+        private string m_MegaPackProductID = GemHunterProductCatalog.k_MegaPack;
+
+        private IPurchaseService m_PurchaseService;
         private PlayerEconomyManagerClient m_PlayerEconomyClient;
         private CloudBindingsProvider m_BindingsProvider;
-        private IStoreController m_StoreController;
-        private IExtensionProvider m_StoreExtensionProvider;
-        
-        private bool m_IsPurchaseInProgress;
 
+        // Cancels only the UI wait when the store closes; paid purchases keep being validated.
+        private CancellationTokenSource m_WaitCancellation = new();
+
+        /// <summary>Localized-free product ID of a purchase delivered to the player.</summary>
         public event Action<string> SuccessfullyPurchased;
-        
+
+        /// <summary>A purchase ended without delivery (cancelled, failed, refused or pending): the UI can unlock.</summary>
+        public event Action PurchaseNotDelivered;
+
         private void Start()
         {
             if (m_StoreUIController == null)
             {
                 m_StoreUIController = GetComponent<StoreUIController>();
             }
-            
+
+            m_PurchaseService = GameSystemLocator.Get<IPurchaseService>();
             m_PlayerEconomyClient = GameSystemLocator.Get<PlayerEconomyManagerClient>();
             m_BindingsProvider = GameSystemLocator.Get<CloudBindingsProvider>();
-            
-            InitializeStore();
-            SetupEventHandlers();
-        }
 
-        private void InitializeStore()
-        {
-            var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
-            builder.AddProduct(m_BundlePackProductID, ProductType.Consumable, new StoreSpecificIds()
-            {
-                {"bundle_pack_play", GooglePlay.Name},
-                {"bundle_pack_apple", AppleAppStore.Name}
-            });
-
-            builder.AddProduct(m_MegaPackProductID, ProductType.Consumable, new StoreSpecificIds()
-            {
-                { "mega_pack_play", GooglePlay.Name },
-                { "mega_pack_apple", AppleAppStore.Name }
-            });
-            
-            foreach (var coinPack in m_CoinPackProducts)
-            {
-                builder.AddProduct(coinPack.Value, ProductType.Consumable, new StoreSpecificIds()
-                {
-                    { $"coin_pack_{coinPack.Key}_play", GooglePlay.Name },
-                    { $"coin_pack_{coinPack.Key}_apple", AppleAppStore.Name }
-                });
-            }
-            
-            UnityPurchasing.Initialize(this, builder);
-        }
-
-        private void SetupEventHandlers()
-        {
             m_StoreUIController.ClickPurchaseBundlePack += HandleBundlePackPurchase;
             m_StoreUIController.ClickPurchaseMegaPack += HandleMegaPackPurchase;
             m_StoreUIController.ClickPurchaseCoinPack += HandleCoinPackPurchase;
             m_StoreUIController.ClickPurchaseFreeCoinPack += HandleCoinPackFreePurchase;
+
+            // Opening the store is an explicit occasion to re-validate purchases left pending.
+            RetryPendingPurchases();
         }
 
-        private void HandleBundlePackPurchase()
+        private void OnDestroy()
         {
-            if (m_IsPurchaseInProgress)
+            m_WaitCancellation.Cancel();
+            m_WaitCancellation.Dispose();
+
+            if (m_StoreUIController == null)
             {
-                Logger.LogWarning("Purchase already in progress");
                 return;
             }
-            
-            InitiatePurchase(m_BundlePackProductID);
+
+            m_StoreUIController.ClickPurchaseBundlePack -= HandleBundlePackPurchase;
+            m_StoreUIController.ClickPurchaseMegaPack -= HandleMegaPackPurchase;
+            m_StoreUIController.ClickPurchaseCoinPack -= HandleCoinPackPurchase;
+            m_StoreUIController.ClickPurchaseFreeCoinPack -= HandleCoinPackFreePurchase;
         }
 
-        private void HandleMegaPackPurchase()
-        {
-            if (m_IsPurchaseInProgress)
-            {
-                Logger.LogWarning("Purchase already in progress");
-                return;
-            }
-            
-            InitiatePurchase(m_MegaPackProductID);
-        }
-        
+        private void HandleBundlePackPurchase() => Purchase(m_BundlePackProductID);
+
+        private void HandleMegaPackPurchase() => Purchase(m_MegaPackProductID);
+
         private void HandleCoinPackPurchase(int coinAmount)
         {
-            if (m_IsPurchaseInProgress)
+            if (GemHunterProductCatalog.CoinPacks.TryGetValue(coinAmount, out var productId))
             {
-                Logger.LogWarning("Purchase already in progress");
-                return;
-            }
-
-            if (m_CoinPackProducts.TryGetValue(coinAmount, out string productId))
-            {
-                InitiatePurchase(productId);
+                Purchase(productId);
             }
             else
             {
                 Logger.LogError($"No product ID found for coin amount: {coinAmount}");
+                PurchaseNotDelivered?.Invoke();
             }
         }
 
-        private void InitiatePurchase(string productId)
-        {
-            if (m_StoreController == null)
-            {
-                Logger.LogError("Store not initialized");
-                return;
-            }
-            
-            m_IsPurchaseInProgress = true;
-            m_StoreController.InitiatePurchase(productId);
-        }
-        
-        public void OnInitialized(IStoreController controller, IExtensionProvider extensions)
-        {
-            m_StoreController = controller;
-            m_StoreExtensionProvider = extensions;
-        }
-        
-        public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs purchaseEvent)
-        {
-            Logger.LogDemo($"Purchase pending - Product: {purchaseEvent.purchasedProduct.definition.id}");
-            
-            var product = purchaseEvent.purchasedProduct;
-            ProcessPurchaseAsync(product);
-            
-            return PurchaseProcessingResult.Pending;
-        }
-        
-        private async void ProcessPurchaseAsync(Product product)
+        private async void Purchase(string productId)
         {
             try
             {
-                if (!product.hasReceipt)
+                var result = await m_PurchaseService.PurchaseAsync(productId, m_WaitCancellation.Token);
+                if (result.Outcome == PurchaseOutcome.Delivered)
                 {
-                    Logger.LogError("Purchase has no receipt");
+                    SuccessfullyPurchased?.Invoke(productId);
                     return;
                 }
-                
-                Logger.LogDemo($"Receipt data: {product.receipt}"); // Log full receipt for debugging
-                
-                PlayerEconomyData playerEconomyData = await m_BindingsProvider.GemHunterBindings.HandlePurchase(
-                    product.definition.id,
-                    product.receipt,
-                    product.transactionID
-                );
 
-                if (playerEconomyData == null)
-                {
-                    Logger.LogError($"Failed to process purchase - invalid server response");
-                    return;
-                }
-                
-                // Update local economy data
-                m_PlayerEconomyClient.HandleEconomyUpdate(playerEconomyData);
-                
-                // Confirm the purchase only after successful server validation and local update
-                m_StoreController.ConfirmPendingPurchase(product);
-                
-                Logger.LogDemo($"⚡ SuccessfullyPurchased - Product: {product.definition.id}");
-                SuccessfullyPurchased?.Invoke(product.metadata.localizedTitle);
+                Logger.LogWarning($"Purchase not delivered: {result}");
+                PurchaseNotDelivered?.Invoke();
             }
             catch (Exception e)
             {
-                Logger.LogError($"Failed to process purchase: {e.Message}");
-                // Consider implementing retry logic or showing an error to the user
+                Logger.LogException(e);
+                PurchaseNotDelivered?.Invoke();
             }
-            finally
+        }
+
+        private async void HandleCoinPackFreePurchase()
+        {
+            try
             {
-                m_IsPurchaseInProgress = false;
+                var economyData = await m_BindingsProvider.GemHunterBindings.HandleFreeCoinPackPurchase();
+                m_PlayerEconomyClient.HandleEconomyUpdate(economyData);
             }
-        }
-
-        private void HandleCoinPackFreePurchase()
-        {
-            if (m_IsPurchaseInProgress)
+            catch (Exception e)
             {
-                Logger.LogWarning("Purchase already in progress");
+                Logger.LogWarning($"Free coin pack not claimed: {e.GetType().Name}");
+                PurchaseNotDelivered?.Invoke();
             }
         }
-        
-        public void OnInitializeFailed(InitializationFailureReason error)
-        {
-            OnInitializeFailed(error, null);
-        }
 
-        public void OnInitializeFailed(InitializationFailureReason error, string message)
+        private async void RetryPendingPurchases()
         {
-            var errorMessage = $"Purchasing failed to initialize. Reason: {error}.";
-
-            if (message != null)
+            try
             {
-                errorMessage += $" More details: {message}";
+                await m_PurchaseService.RetryPendingFulfillmentsAsync(m_WaitCancellation.Token);
             }
-
-            Logger.LogWarning(errorMessage);
-        }
-        
-        public void OnPurchaseFailed(Product product, PurchaseFailureDescription failureDescription)
-        {
-            Logger.LogWarning($"Store purchase failed: {product.definition.id} {failureDescription}");
-        }
-
-        public void OnPurchaseFailed(Product product, PurchaseFailureReason failureReason)
-        {
-            Logger.LogWarning($"PurchaseFailed on {product.definition.id} for reason: {failureReason.ToString()}");
+            catch (OperationCanceledException)
+            {
+                // Store closed: remaining retries happen on the next occasion.
+            }
+            catch (Exception e)
+            {
+                Logger.LogException(e);
+            }
         }
     }
 }

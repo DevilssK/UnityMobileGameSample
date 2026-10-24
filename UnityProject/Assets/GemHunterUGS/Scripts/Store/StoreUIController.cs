@@ -87,6 +87,7 @@ namespace GemHunterUGS.Scripts.Store
             m_StoreView.CoinPackFreeButton.clicked += HandleCoinPackFreePurchaseClick;
             
             m_StoreClient.SuccessfullyPurchased += HandlePurchaseSuccess;
+            m_StoreClient.PurchaseNotDelivered += HandlePurchaseNotDelivered;
             m_StoreView.ClosePopUpButton.clicked += HandleClosePurchaseSuccessPopup;
             
             SetupCoinPackButton(m_StoreView.CoinPack100Button, 100);
@@ -169,6 +170,16 @@ namespace GemHunterUGS.Scripts.Store
             m_StoreView.ShowPurchaseSuccessPopUp(message);
         }
 
+        // Every terminal path unlocks the buttons the click disabled: no purchase can leave the store frozen.
+        private void HandlePurchaseNotDelivered()
+        {
+            m_StoreView.ActivateButtonsForRepurchase();
+            if (!m_PlayerEconomyManager.PlayerEconomyDataLocal.HasPurchasedFreeCoinPack)
+            {
+                m_StoreView.ActivatePurchaseButton(m_StoreView.CoinPackFreeButton);
+            }
+        }
+
         private void HandleClosePurchaseSuccessPopup()
         {
             m_StoreView.HidePurchaseSuccessPopUp();
@@ -198,7 +209,9 @@ namespace GemHunterUGS.Scripts.Store
             
             m_PlayerEconomyManager.InfiniteHeartStatusUpdated -= HandleInfiniteHeartStatus;
             m_StoreView.ClosePopUpButton.clicked -= HandleClosePurchaseSuccessPopup;
-            
+            m_StoreClient.SuccessfullyPurchased -= HandlePurchaseSuccess;
+            m_StoreClient.PurchaseNotDelivered -= HandlePurchaseNotDelivered;
+
             foreach (var kvp in m_CoinPackHandlers)
             {
                 if (kvp.Key != null)  // Check if button still exists
