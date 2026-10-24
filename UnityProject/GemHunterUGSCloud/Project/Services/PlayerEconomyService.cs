@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using GemHunterUGSCloud.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Core;
+using Unity.Services.CloudCode.Shared;
 using Unity.Services.Economy.Model;
 namespace GemHunterUGSCloud.Services;
 
@@ -34,6 +36,8 @@ namespace GemHunterUGSCloud.Services;
 /// </summary>
 public class PlayerEconomyService
 {
+    private const string k_FreePackClaimItemId = "COIN_PACK_FREE_CLAIM";
+
     // 6 minutes infinite heart for testing...
     private readonly float m_InfiniteHeartDuration = 0.1f * 3600f; 
     
@@ -310,7 +314,7 @@ public class PlayerEconomyService
     
     #region Currency Operations
     
-    public async Task<int> UpdatePlayerCurrency(IExecutionContext context, string currencyId, int amount)
+    public virtual async Task<int> UpdatePlayerCurrency(IExecutionContext context, string currencyId, int amount)
     {
         m_Logger.LogInformation("Attempting currency update: PlayerId: {PlayerId}, Currency: {CurrencyId}, Amount: {Amount}", 
             context.PlayerId, currencyId, amount);
@@ -703,17 +707,22 @@ public class PlayerEconomyService
         }
     }
     
-    public async Task MarkFreePackAsClaimed(IExecutionContext context)
+    /// <summary>
+    /// Atomically marks the free pack as claimed by creating its inventory item under a fixed
+    /// playersInventoryItemId: Economy refuses a second item with the same ID (409 Conflict), so only
+    /// one concurrent request wins. Returns false when the pack was already claimed.
+    /// </summary>
+    public async Task<bool> TryClaimFreePackAsync(IExecutionContext context)
     {
+        var instanceData = new Dictionary<string, object>
+        {
+            { "claimedAt", DateTimeOffset.UtcNow.ToUnixTimeSeconds() }
+        };
+        var inventoryRequest = new AddInventoryRequest(
+            EconomyConstants.Products.k_CoinPackFree, k_FreePackClaimItemId, instanceData);
+
         try
         {
-            var instanceData = new Dictionary<string, object>
-            {
-                { "claimedAt", DateTimeOffset.UtcNow.ToUnixTimeSeconds() }
-            };
-
-            var inventoryRequest = new AddInventoryRequest(EconomyConstants.Products.k_CoinPackFree, instanceData: instanceData);
-        
             await m_GameApiClient.EconomyInventory.AddInventoryItemAsync(
                 context,
                 context.AccessToken,
@@ -721,14 +730,15 @@ public class PlayerEconomyService
                 context.PlayerId!,
                 inventoryRequest
             );
-        
-            m_Logger.LogInformation($"Marked free pack as claimed for player {context.PlayerId}");
         }
-        catch (Exception e)
+        catch (ApiException e) when (e.Response?.StatusCode == HttpStatusCode.Conflict)
         {
-            m_Logger.LogError(e, "Failed to mark free pack as claimed");
-            throw;
+            m_Logger.LogWarning("Free pack already claimed for player {PlayerId}", context.PlayerId);
+            return false;
         }
+
+        m_Logger.LogInformation("Marked free pack as claimed for player {PlayerId}", context.PlayerId);
+        return true;
     }
     
     #endregion

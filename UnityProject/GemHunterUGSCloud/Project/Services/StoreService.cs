@@ -76,16 +76,23 @@ public class StoreService
             var economyData = await m_PlayerEconomyService.GetPlayerEconomyData(context)
                 ?? throw new InvalidOperationException("Failed to get player economy data");
 
-            if (economyData.HasPurchasedFreeCoinPack == false)
+            if (economyData.HasPurchasedFreeCoinPack)
             {
-                await m_PlayerEconomyService.UpdatePlayerCurrency(context, EconomyConstants.Currencies.k_Coin, m_FreeCoinPackReward);
-                economyData.HasPurchasedFreeCoinPack = true;
-                await m_PlayerEconomyService.MarkFreePackAsClaimed(context);
+                m_Logger.LogWarning("Free pack already purchased");
+                return economyData;
+            }
+
+            // Lock first, credit second: concurrent requests cannot both credit. If the credit fails after
+            // the lock, the player loses this low-value free pack rather than receiving it twice.
+            if (!await m_PlayerEconomyService.TryClaimFreePackAsync(context))
+            {
                 return await m_PlayerEconomyService.GetPlayerEconomyData(context)
                     ?? throw new InvalidOperationException("Failed to get player economy data");
             }
-            m_Logger.LogWarning("Free pack already purchased");
-            return economyData;
+
+            await m_PlayerEconomyService.UpdatePlayerCurrency(context, EconomyConstants.Currencies.k_Coin, m_FreeCoinPackReward);
+            return await m_PlayerEconomyService.GetPlayerEconomyData(context)
+                ?? throw new InvalidOperationException("Failed to get player economy data");
         }
 
         catch (Exception e)
