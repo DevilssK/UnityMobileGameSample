@@ -73,13 +73,13 @@ namespace GemHunterUGS.Scripts.Store
         private void InitializeStore()
         {
             var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
-            builder.AddProduct(m_BundlePackProductID, ProductType.Consumable, new IDs()
+            builder.AddProduct(m_BundlePackProductID, ProductType.Consumable, new StoreSpecificIds()
             {
                 {"bundle_pack_play", GooglePlay.Name},
                 {"bundle_pack_apple", AppleAppStore.Name}
             });
 
-            builder.AddProduct(m_MegaPackProductID, ProductType.Consumable, new IDs()
+            builder.AddProduct(m_MegaPackProductID, ProductType.Consumable, new StoreSpecificIds()
             {
                 { "mega_pack_play", GooglePlay.Name },
                 { "mega_pack_apple", AppleAppStore.Name }
@@ -87,7 +87,7 @@ namespace GemHunterUGS.Scripts.Store
             
             foreach (var coinPack in m_CoinPackProducts)
             {
-                builder.AddProduct(coinPack.Value, ProductType.Consumable, new IDs()
+                builder.AddProduct(coinPack.Value, ProductType.Consumable, new StoreSpecificIds()
                 {
                     { $"coin_pack_{coinPack.Key}_play", GooglePlay.Name },
                     { $"coin_pack_{coinPack.Key}_apple", AppleAppStore.Name }

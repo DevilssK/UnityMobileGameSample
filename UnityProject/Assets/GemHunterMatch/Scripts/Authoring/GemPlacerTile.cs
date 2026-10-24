@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using GemHunterUGS.Scripts;
 using UnityEngine;
-using UnityEngine.Rendering.UI;
 using UnityEngine.Tilemaps;
 
 namespace Match3
