@@ -25,7 +25,7 @@
 
 - `PlayerPurchaseGoogleplaystoreRequest { Id, PurchaseData, PurchaseDataSignature, LocalCost, LocalCurrency }` ; `PlayerPurchaseAppleappstoreRequest { Id, Receipt, LocalCost, LocalCurrency }`.
 - Réponses : `Verification.Status` ∈ `VALID, VALIDNOTREDEEMED, INVALIDALREADYREDEEMED, INVALIDVERIFICATIONFAILED, INVALIDANOTHERPLAYER, INVALIDCONFIGURATION, INVALIDPRODUCTIDMISMATCH` (un enum distinct par store, mêmes noms).
-- `ApiException(ApiExceptionType type, string message, IApiResponse response)`, `ApiExceptionType ∈ { InvalidParameters, Network, Http, Deserialization }` ; `ApiResponse<T>` a un constructeur vide et `StatusCode`, `Data`, `RawContent` settables.
+- `ApiException(ApiExceptionType type, string message, IApiResponse response)`, `ApiExceptionType ∈ { InvalidParameters, Network, Http, Deserialization }` ; `ApiResponse<T>` a un constructeur vide et des propriétés en lecture seule (les tests les renseignent par réflexion). Les modèles de requête valident leurs champs requis dans le constructeur, `localCurrency` compris : l’initialiseur d’objet du sample levait `ArgumentNullException` à chaque achat réel.
 - `InventoryResponse.Created.Date : DateTime?` ; `AddInventoryRequest(inventoryItemId, playersInventoryItemId, instanceData)`.
 - `IExecutionContext` expose `EnvironmentName`, `CorrelationId`.
 - Doc Economy : les statuts `INVALID_*` peuvent arriver **en réponse ou en exception** — gérer les deux.
@@ -37,6 +37,7 @@
 3. Deux redeems simultanés du même reçu : Economy n'en valide qu'un.
 4. Economy renvoie `409 Conflict` sur un `playersInventoryItemId` déjà existant (verrou du pack gratuit).
 5. Redeem d'un `.ecr` contenant `INFINITE_HEART` crée l'item sans `instanceData`.
+6. Economy accepte `localCost = 0` et `localCurrency = ""` (champs optionnels côté API, obligatoires dans le modèle C#).
 
 ## Changements de comportement visibles (à annoncer)
 
