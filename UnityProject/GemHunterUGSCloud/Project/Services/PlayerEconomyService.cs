@@ -155,7 +155,7 @@ public class PlayerEconomyService
     #region Data Access
     
     [CloudCodeFunction("GetPlayerEconomyData")]
-    public async Task<PlayerEconomyData?> GetPlayerEconomyData(IExecutionContext context)
+    public virtual async Task<PlayerEconomyData?> GetPlayerEconomyData(IExecutionContext context)
     {
         if (context.PlayerId == null)
         {

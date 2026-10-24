@@ -1,4 +1,5 @@
 ﻿using GemHunterUGSCloud.Services;
+using GemHunterUGSCloud.Purchases;
 using Microsoft.Extensions.DependencyInjection;
 using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Core;
@@ -31,6 +32,7 @@ public class ModuleConfig : ICloudCodeSetup
         config.Dependencies.AddSingleton<PlayerGiftsService>();
         config.Dependencies.AddSingleton<AdRewardsService>();
         
+        config.Dependencies.AddSingleton<PurchaseRedeemer>();
         config.Dependencies.AddSingleton<StoreService>();
     }
 }

@@ -39,6 +39,14 @@ public class PurchaseRedeemer
     public virtual async Task<PurchaseRedemptionResult> RedeemAsync(
         IExecutionContext context, string productId, string receiptJson)
     {
+        // Grants go to the authenticated caller only; a call without a player (e.g. service token) is refused.
+        var playerId = context.PlayerId;
+        if (string.IsNullOrEmpty(playerId))
+        {
+            return Log(context, productId, StoreKind.Unknown,
+                new PurchaseRedemptionResult(PurchaseRedemptionStatus.Rejected, "No authenticated player"));
+        }
+
         if (string.IsNullOrEmpty(productId))
         {
             return Log(context, productId, StoreKind.Unknown,
@@ -63,8 +71,8 @@ public class PurchaseRedeemer
         try
         {
             result = receipt.Store == StoreKind.GooglePlay
-                ? await RedeemGooglePlayAsync(context, productId, receipt)
-                : await RedeemAppleAppStoreAsync(context, productId, receipt);
+                ? await RedeemGooglePlayAsync(context, playerId, productId, receipt)
+                : await RedeemAppleAppStoreAsync(context, playerId, productId, receipt);
         }
         catch (ApiException e)
         {
@@ -75,28 +83,29 @@ public class PurchaseRedeemer
     }
 
     private async Task<PurchaseRedemptionResult> RedeemGooglePlayAsync(
-        IExecutionContext context, string productId, StoreReceipt receipt)
+        IExecutionContext context, string playerId, string productId, StoreReceipt receipt)
     {
         // The generated model validates required fields in its constructor: always pass them explicitly.
+        // StoreReceipt.TryParse guarantees the store fields are present for this store.
         var request = new PlayerPurchaseGoogleplaystoreRequest(
             id: productId,
-            purchaseData: receipt.GooglePurchaseData,
-            purchaseDataSignature: receipt.GoogleSignature,
+            purchaseData: receipt.GooglePurchaseData!,
+            purchaseDataSignature: receipt.GoogleSignature!,
             localCost: NoLocalCost,
             localCurrency: NoLocalCurrency);
         var response = await _gameApiClient.EconomyPurchases.RedeemGooglePlayPurchaseAsync(
-            context, context.AccessToken, context.ProjectId, context.PlayerId, request);
+            context, context.AccessToken, context.ProjectId, playerId, request);
         var status = response.Data.Verification.Status;
         return new PurchaseRedemptionResult(RedemptionStatusMapper.FromGoogle(status), $"Economy: {status}");
     }
 
     private async Task<PurchaseRedemptionResult> RedeemAppleAppStoreAsync(
-        IExecutionContext context, string productId, StoreReceipt receipt)
+        IExecutionContext context, string playerId, string productId, StoreReceipt receipt)
     {
         var request = new PlayerPurchaseAppleappstoreRequest(
-            id: productId, receipt: receipt.AppleReceipt, localCost: NoLocalCost, localCurrency: NoLocalCurrency);
+            id: productId, receipt: receipt.AppleReceipt!, localCost: NoLocalCost, localCurrency: NoLocalCurrency);
         var response = await _gameApiClient.EconomyPurchases.RedeemAppleAppStorePurchaseAsync(
-            context, context.AccessToken, context.ProjectId, context.PlayerId, request);
+            context, context.AccessToken, context.ProjectId, playerId, request);
         var status = response.Data.Verification.Status;
         return new PurchaseRedemptionResult(RedemptionStatusMapper.FromApple(status), $"Economy: {status}");
     }

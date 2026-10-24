@@ -242,6 +242,19 @@ public class PurchaseRedeemerTests
     }
 
     [Fact]
+    public async Task RedeemAsync_WhenNoAuthenticatedPlayer_IsRejectedWithoutCallingEconomy()
+    {
+        var (client, purchases) = Client();
+        var context = Context();
+        context.PlayerId.Returns((string?)null);
+
+        var result = await Redeemer(client).RedeemAsync(context, ProductId, GoogleReceipt());
+
+        Assert.Equal(PurchaseRedemptionStatus.Rejected, result.Status);
+        Assert.Empty(purchases.ReceivedCalls());
+    }
+
+    [Fact]
     public async Task RedeemAsync_WhenUnexpectedExceptionOccurs_Propagates()
     {
         var (client, purchases) = Client();
