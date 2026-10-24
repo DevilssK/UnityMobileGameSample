@@ -1,0 +1,12 @@
+# Claude Code — local, per-user settings
+.claude/settings.local.json
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+
+# Backend build output
+**/bin/
+**/obj/
