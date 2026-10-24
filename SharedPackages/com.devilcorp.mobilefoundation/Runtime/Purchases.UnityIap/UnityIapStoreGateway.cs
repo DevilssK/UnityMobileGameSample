@@ -81,6 +81,17 @@ namespace DevilCorp.MobileFoundation.Purchases.UnityIap
             _store.ConfirmPurchase(order);
         }
 
+        public void Reconnect()
+        {
+            if (_store == null || _productsFetched)
+            {
+                return;
+            }
+
+            // IAP 5 accepts a new Connect once the previous attempt completed; OnStoreConnected refetches products.
+            _ = _store.Connect();
+        }
+
         public void Dispose()
         {
             if (_store == null)
