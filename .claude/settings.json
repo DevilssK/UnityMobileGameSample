@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet restore:*)"
+    ],
+    "deny": [
+      "Read(**/*.keystore)",
+      "Read(**/*.jks)",
+      "Read(**/*.p12)",
+      "Read(**/*.p8)",
+      "Read(**/*.mobileprovision)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(**/Library/**)",
+      "Edit(**/Temp/**)",
+      "Write(**/Library/**)",
+      "Write(**/Temp/**)"
+    ]
+  },
+  "enabledPlugins": {
+    "unity@anthropic-plugin-directory": true,
+    "superpowers@anthropic-plugin-directory": true
+  }
+}
