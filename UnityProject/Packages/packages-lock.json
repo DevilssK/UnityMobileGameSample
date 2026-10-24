@@ -1,5 +1,13 @@
 {
   "dependencies": {
+    "com.devilcorp.mobilefoundation": {
+      "version": "file:../../SharedPackages/com.devilcorp.mobilefoundation",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.purchasing": "5.4.4"
+      }
+    },
     "com.unity.2d.animation": {
       "version": "16.0.1",
       "depth": 1,

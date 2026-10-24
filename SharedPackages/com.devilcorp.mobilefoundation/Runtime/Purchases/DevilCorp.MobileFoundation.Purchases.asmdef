@@ -1,0 +1,14 @@
+{
+    "name": "DevilCorp.MobileFoundation.Purchases",
+    "rootNamespace": "DevilCorp.MobileFoundation.Purchases",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
