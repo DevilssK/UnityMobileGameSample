@@ -53,7 +53,11 @@ public class RedemptionStatusMapperTests
     [InlineData(500)]
     [InlineData(503)]
     [InlineData(429)]
-    public void FromHttpStatus_WhenServerErrorOrTooManyRequests_ReturnsRetryLater(int code)
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(408)]
+    [InlineData(409)]
+    public void FromHttpStatus_WhenTransientOrServerSideError_ReturnsRetryLater(int code)
     {
         Assert.Equal(PurchaseRedemptionStatus.RetryLater,
             RedemptionStatusMapper.FromHttpStatus((HttpStatusCode)code, ApiExceptionType.Http));

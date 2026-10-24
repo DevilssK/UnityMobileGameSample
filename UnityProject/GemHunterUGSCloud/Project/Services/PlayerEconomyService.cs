@@ -36,7 +36,7 @@ namespace GemHunterUGSCloud.Services;
 /// </summary>
 public class PlayerEconomyService
 {
-    private const string k_FreePackClaimItemId = "COIN_PACK_FREE_CLAIM";
+    private const int k_InventoryPageSize = 100;
 
     // 6 minutes infinite heart for testing...
     private readonly float m_InfiniteHeartDuration = 0.1f * 3600f; 
@@ -181,7 +181,8 @@ public class PlayerEconomyService
             await Task.WhenAll(currencyTask, inventoryTask);
             
             // Check infinite heart status
-            var infiniteHeartItem = await GetExistingInventoryItem(context, EconomyConstants.Items.k_InfiniteHeart);
+            var infiniteHeartItem = SelectCurrentInfiniteHeart(
+                await GetInventoryInstancesAsync(context, EconomyConstants.Items.k_InfiniteHeart));
             if (infiniteHeartItem != null)
             {
                 var isActive = await CheckInfiniteHeartExpiration(context, infiniteHeartItem);
@@ -251,21 +252,7 @@ public class PlayerEconomyService
         
         try
         {
-            var inventoryResponse = await m_GameApiClient.EconomyInventory.GetPlayerInventoryAsync(
-                context,
-                context.AccessToken,
-                context.ProjectId,
-                context.PlayerId!
-            );
-
-            if (inventoryResponse?.Data?.Results != null)
-            {
-                UpdateInventoryFromResponse(economyData, inventoryResponse.Data.Results);
-            }
-            else
-            {
-                m_Logger.LogWarning("No inventory data returned from Economy service");
-            }
+            UpdateInventoryFromResponse(economyData, await GetInventoryInstancesAsync(context, null));
         }
         catch (Exception e)
         {
@@ -276,23 +263,48 @@ public class PlayerEconomyService
     
     private void UpdateInventoryFromResponse(PlayerEconomyData economyData, List<InventoryResponse> inventoryItems)
     {
-        foreach (var item in inventoryItems)
+        foreach (var (itemId, amount) in SumInventory(inventoryItems))
         {
-            if (!string.IsNullOrEmpty(item.InventoryItemId))
-            {
-                int amount = ParseInventoryItemAmount(item.InstanceData);
-                economyData.ItemInventory[item.InventoryItemId] = amount;
-            }
-            else
-            {
-                m_Logger.LogWarning("Received an inventory item with null or empty InventoryItemId");
-            }
+            economyData.ItemInventory[itemId] = amount;
         }
     }
-    
-    private int ParseInventoryItemAmount(object? instanceData)
+
+    /// <summary>
+    /// Adds up every instance of each item. The game keeps a "counter" instance with {"amount": N};
+    /// Economy redeem (bundle .ecr rewards) adds instances without instance data, each counting as one unit.
+    /// </summary>
+    internal static Dictionary<string, int> SumInventory(IEnumerable<InventoryResponse> instances)
     {
-        if (instanceData == null) return 0;
+        var totals = new Dictionary<string, int>();
+        foreach (var instance in instances)
+        {
+            if (string.IsNullOrEmpty(instance.InventoryItemId)) continue;
+
+            var units = instance.InstanceData == null ? 1 : ReadAmount(instance.InstanceData) ?? 0;
+            totals[instance.InventoryItemId] = totals.TryGetValue(instance.InventoryItemId, out var total)
+                ? total + units
+                : units;
+        }
+
+        return totals;
+    }
+
+    /// <summary>The instance the game writes counts into: the first one carrying an "amount".</summary>
+    internal static InventoryResponse? SelectCounterInstance(IEnumerable<InventoryResponse> instances) =>
+        instances.FirstOrDefault(instance => ReadAmount(instance.InstanceData) != null);
+
+    /// <summary>Each bundle redeem adds a heart instance: the current one is the most recently activated.</summary>
+    internal static InventoryResponse? SelectCurrentInfiniteHeart(IEnumerable<InventoryResponse> instances) =>
+        instances
+            .Select(instance => (Instance: instance, State: ResolveInfiniteHeartState(instance.InstanceData, instance.Created?.Date)))
+            .Where(candidate => candidate.State != null)
+            .OrderByDescending(candidate => candidate.State!.Value.ActivatedAt)
+            .Select(candidate => candidate.Instance)
+            .FirstOrDefault();
+
+    private static int? ReadAmount(object? instanceData)
+    {
+        if (instanceData == null) return null;
 
         try
         {
@@ -304,10 +316,10 @@ public class PlayerEconomyService
         }
         catch (JsonException)
         {
-            m_Logger.LogWarning($"Failed to parse InstanceData as JSON");
+            // Unreadable instance data carries no count.
         }
 
-        return 0;
+        return null;
     }
     
     #endregion
@@ -402,7 +414,7 @@ public class PlayerEconomyService
 
         try
         {
-            var existingItem = await GetExistingInventoryItem(context, itemId);
+            var existingItem = SelectCounterInstance(await GetInventoryInstancesAsync(context, itemId));
 
             if (existingItem != null)
             {
@@ -459,31 +471,36 @@ public class PlayerEconomyService
     /// <summary>
     /// For GetPlayerInventory 
     /// <see href="<https://docs.unity3d.com/Packages/com.unity.services.apis@1.1/api/Unity.Services.Apis.Economy.EconomyInventoryApi.html#Unity_Services_Apis_Economy_EconomyInventoryApi_GetPlayerInventory_System_String_System_String_System_String_System_String_System_String_System_String_System_Nullable_System_Int32__System_Collections_Generic_List_System_String__System_Collections_Generic_List_System_String__System_Threading_CancellationToken_>"/>
+    /// Returns every instance of the item (or of all items when itemId is null), across all pages:
+    /// redeemed rewards add one instance per grant, so a player can exceed a single page.
     /// </summary>
-    /// <param name="context"></param>
-    /// <param name="itemId"></param>
-    /// <returns></returns>
-    private async Task<InventoryResponse?> GetExistingInventoryItem(IExecutionContext context, string itemId)
+    internal async Task<List<InventoryResponse>> GetInventoryInstancesAsync(IExecutionContext context, string? itemId)
     {
         try
         {
-            var existingInventory = await m_GameApiClient.EconomyInventory.GetPlayerInventoryAsync(
-                context,
-                context.AccessToken,
-                context.ProjectId,
-                context.PlayerId ?? throw new InvalidOperationException(),
-                inventoryItemIds: new List<string> { itemId }
-            );
-
-            m_Logger.LogInformation($"GetPlayerInventoryAsync response: {JsonConvert.SerializeObject(existingInventory)}");
-
-            if (existingInventory?.Data?.Results != null && existingInventory.Data.Results.Count > 0)
+            var instances = new List<InventoryResponse>();
+            string? after = null;
+            while (true)
             {
-                return existingInventory.Data.Results[0];
+                var page = await m_GameApiClient.EconomyInventory.GetPlayerInventoryAsync(
+                    context,
+                    context.AccessToken,
+                    context.ProjectId,
+                    context.PlayerId ?? throw new InvalidOperationException(),
+                    after: after,
+                    limit: k_InventoryPageSize,
+                    inventoryItemIds: itemId == null ? null : new List<string> { itemId }
+                );
+
+                var results = page?.Data?.Results;
+                if (results == null || results.Count == 0) break;
+
+                instances.AddRange(results);
+                if (string.IsNullOrEmpty(page!.Data.Links?.Next)) break;
+                after = results[^1].PlayersInventoryItemId;
             }
 
-            m_Logger.LogInformation($"No existing inventory item found for itemId: {itemId}");
-            return null;
+            return instances;
         }
         catch (Exception e)
         {
@@ -695,10 +712,10 @@ public class PlayerEconomyService
                 context.AccessToken,
                 context.ProjectId,
                 context.PlayerId,
-                inventoryItemIds: new List<string> { EconomyConstants.Products.k_CoinPackFree }
+                inventoryItemIds: new List<string> { EconomyConstants.Items.k_FreeCoinPackClaim }
             );
 
-            return inventoryResponse?.Data?.Results?.Any(item => item.InventoryItemId == EconomyConstants.Products.k_CoinPackFree) ?? false;
+            return inventoryResponse?.Data?.Results?.Any(item => item.InventoryItemId == EconomyConstants.Items.k_FreeCoinPackClaim) ?? false;
         }
         catch (Exception e)
         {
@@ -719,7 +736,7 @@ public class PlayerEconomyService
             { "claimedAt", DateTimeOffset.UtcNow.ToUnixTimeSeconds() }
         };
         var inventoryRequest = new AddInventoryRequest(
-            EconomyConstants.Products.k_CoinPackFree, k_FreePackClaimItemId, instanceData);
+            EconomyConstants.Items.k_FreeCoinPackClaim, EconomyConstants.Items.k_FreeCoinPackClaim, instanceData);
 
         try
         {

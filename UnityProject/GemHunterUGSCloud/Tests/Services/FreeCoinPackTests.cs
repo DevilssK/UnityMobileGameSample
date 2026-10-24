@@ -19,8 +19,8 @@ namespace GemHunterUGSCloud.Tests.Services;
 
 public class FreeCoinPackTests
 {
-    private const string FreePackItemId = "COIN_PACK_FREE";
-    private const string FreePackClaimId = "COIN_PACK_FREE_CLAIM";
+    private const string FreePackItemId = "FREE_COIN_PACK_CLAIM";
+    private const string FreePackClaimId = "FREE_COIN_PACK_CLAIM";
 
     private static Task<ApiResponse<InventoryResponse>> AddInventory(IEconomyInventoryApi inventory) =>
         inventory.AddInventoryItemAsync(

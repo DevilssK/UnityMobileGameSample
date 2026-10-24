@@ -28,19 +28,23 @@ internal static class RedemptionStatusMapper
         _ => PurchaseRedemptionStatus.Rejected
     };
 
-    /// <summary>Fallback when an API failure carries no readable verification status.</summary>
+    /// <summary>
+    /// Fallback when an API failure carries no readable verification status. Only errors that describe the
+    /// request itself are definitive; anything else (auth, timeout, conflict, server) may be transient, and a
+    /// paid purchase must stay pending rather than be dropped.
+    /// </summary>
     public static PurchaseRedemptionStatus FromHttpStatus(HttpStatusCode? statusCode, ApiExceptionType type)
     {
         switch (type)
         {
-            case ApiExceptionType.Network:
-            case ApiExceptionType.Deserialization:
-                return PurchaseRedemptionStatus.RetryLater;
-            case ApiExceptionType.Http when statusCode is { } code
-                && ((int)code >= 500 || code == HttpStatusCode.TooManyRequests):
-                return PurchaseRedemptionStatus.RetryLater;
-            default:
+            case ApiExceptionType.InvalidParameters:
                 return PurchaseRedemptionStatus.Rejected;
+            case ApiExceptionType.Http when statusCode is HttpStatusCode.BadRequest
+                or HttpStatusCode.NotFound
+                or HttpStatusCode.UnprocessableEntity:
+                return PurchaseRedemptionStatus.Rejected;
+            default:
+                return PurchaseRedemptionStatus.RetryLater;
         }
     }
 }
