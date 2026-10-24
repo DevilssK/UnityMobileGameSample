@@ -4,7 +4,7 @@
 
 **Goal :** remplacer le client d'achat Unity IAP 4 du sample par un service d'achat IAP 5 du socle, sûr sur tous les chemins (échec, annulation, attente, reprise), consommé par Gem Hunter via un contrat.
 
-**Architecture :** trois couches. (1) **Cœur** C# pur dans le package commun (`Studio.MobileFoundation.Purchases`, sans `UnityEngine`) : contrats et `PurchaseCoordinator`, la machine à états testée par `dotnet test`. (2) **Adaptateur** `UnityIapStoreGateway` (asmdef séparée, dépend d'Unity IAP 5) qui traduit `StoreController` vers le contrat `IStoreGateway`. (3) **Hôte** Gem Hunter : `CloudCodePurchaseFulfillment` (appel `HandlePurchase`, propre au jeu) et `StoreClient` réduit à un pont UI ↔ `IPurchaseService`. Le service est créé au démarrage du jeu, pas dans la scène du hub, pour reprendre les achats payés en attente.
+**Architecture :** trois couches. (1) **Cœur** C# pur dans le package commun (`DevilCorp.MobileFoundation.Purchases`, sans `UnityEngine`) : contrats et `PurchaseCoordinator`, la machine à états testée par `dotnet test`. (2) **Adaptateur** `UnityIapStoreGateway` (asmdef séparée, dépend d'Unity IAP 5) qui traduit `StoreController` vers le contrat `IStoreGateway`. (3) **Hôte** Gem Hunter : `CloudCodePurchaseFulfillment` (appel `HandlePurchase`, propre au jeu) et `StoreClient` réduit à un pont UI ↔ `IPurchaseService`. Le service est créé au démarrage du jeu, pas dans la scène du hub, pour reprendre les achats payés en attente.
 
 **Tech Stack :** Unity `6000.6.7f1`, Unity IAP `5.4.4`, package UPM local (`file:`), xUnit en `net10.0` avec `LangVersion 9` pour rester dans le C# supporté par Unity.
 
@@ -46,15 +46,15 @@
 
 | Fichier | Rôle |
 | --- | --- |
-| `SharedPackages/com.studio.mobilefoundation/package.json` | Package UPM `0.1.0`, dépend de `com.unity.purchasing` `5.4.4` |
-| `…/Runtime/Purchases/Studio.MobileFoundation.Purchases.asmdef` | Cœur, `noEngineReferences: true` |
+| `SharedPackages/com.devilcorp.mobilefoundation/package.json` | Package UPM `0.1.0`, dépend de `com.unity.purchasing` `5.4.4` |
+| `…/Runtime/Purchases/DevilCorp.MobileFoundation.Purchases.asmdef` | Cœur, `noEngineReferences: true` |
 | `…/Runtime/Purchases/PurchaseOutcome.cs`, `PurchaseResult.cs`, `StorePurchase.cs`, `StoreFailure.cs`, `FulfillmentStatus.cs` | Types du contrat |
 | `…/Runtime/Purchases/IPurchaseService.cs`, `IStoreGateway.cs`, `IPurchaseFulfillment.cs` | Contrats |
 | `…/Runtime/Purchases/PurchaseCoordinator.cs` | Machine à états |
-| `…/Runtime/Purchases.UnityIap/Studio.MobileFoundation.Purchases.UnityIap.asmdef` | Adaptateur (réf. `UnityEngine.Purchasing`) |
+| `…/Runtime/Purchases.UnityIap/DevilCorp.MobileFoundation.Purchases.UnityIap.asmdef` | Adaptateur (réf. `UnityEngine.Purchasing`) |
 | `…/Runtime/Purchases.UnityIap/StoreProductDefinition.cs`, `UnityIapStoreGateway.cs` | Catalogue et adaptateur IAP 5 |
 | `SharedPackages/Tests/MobileFoundation.Purchases.Tests/` | Tests `dotnet` du cœur (hors du package, Unity ne l'importe pas) |
-| `UnityProject/Packages/manifest.json` | `"com.studio.mobilefoundation": "file:../../SharedPackages/com.studio.mobilefoundation"` |
+| `UnityProject/Packages/manifest.json` | `"com.devilcorp.mobilefoundation": "file:../../SharedPackages/com.devilcorp.mobilefoundation"` |
 | `UnityProject/Assets/GemHunterUGS/Scripts/Store/CloudCodePurchaseFulfillment.cs` | Validation serveur propre à Gem Hunter |
 | `UnityProject/Assets/GemHunterUGS/Scripts/Store/GemHunterProductCatalog.cs` | Les 7 produits et leurs IDs Google/Apple |
 | `UnityProject/Assets/GemHunterUGS/Scripts/Store/StoreClient.cs` | Pont UI ↔ `IPurchaseService` (réécrit) |
@@ -66,16 +66,16 @@
 
 ### Task 1 : Squelette du package et banc de test du cœur
 
-**Files :** Create `package.json`, les deux `.asmdef`, `SharedPackages/Tests/MobileFoundation.Purchases.Tests/MobileFoundation.Purchases.Tests.csproj` (`net10.0`, `LangVersion 9`, `Nullable enable`, xUnit, `<Compile Include="../../com.studio.mobilefoundation/Runtime/Purchases/**/*.cs" />`), `Tests/PackageSmokeTests.cs` ; Modify `manifest.json` (dépendance `file:`), `.gitignore` racine (bin/obj déjà couverts).
+**Files :** Create `package.json`, les deux `.asmdef`, `SharedPackages/Tests/MobileFoundation.Purchases.Tests/MobileFoundation.Purchases.Tests.csproj` (`net10.0`, `LangVersion 9`, `Nullable enable`, xUnit, `<Compile Include="../../com.devilcorp.mobilefoundation/Runtime/Purchases/**/*.cs" />`), `Tests/PackageSmokeTests.cs` ; Modify `manifest.json` (dépendance `file:`), `.gitignore` racine (bin/obj déjà couverts).
 
-- [ ] **Step 1 :** écrire `PackageSmokeTests.PurchaseOutcome_HasDeliveredValue` (référence `Studio.MobileFoundation.Purchases.PurchaseOutcome.Delivered`) ; `dotnet test` → échec de compilation attendu.
+- [ ] **Step 1 :** écrire `PackageSmokeTests.PurchaseOutcome_HasDeliveredValue` (référence `DevilCorp.MobileFoundation.Purchases.PurchaseOutcome.Delivered`) ; `dotnet test` → échec de compilation attendu.
 - [ ] **Step 2 :** créer le package, l'enum `PurchaseOutcome { Delivered, Cancelled, Failed, Deferred, Rejected, RetryLater, Unavailable, AlreadyInProgress }` ; `dotnet test` → vert.
 - [ ] **Step 3 :** ajouter la dépendance `file:` au manifest ; via MCP, `recompile` puis lecture du log : le package est importé, 0 erreur ; Unity génère les `.meta` du package (à commiter).
 - [ ] **Step 4 : commit** — `Add mobile foundation package skeleton with purchase outcome contract` (manifest commité sans les lignes locales AI/Pipeline).
 
 ### Task 2 : `PurchaseCoordinator` (TDD)
 
-**Interfaces (namespace `Studio.MobileFoundation.Purchases`) :**
+**Interfaces (namespace `DevilCorp.MobileFoundation.Purchases`) :**
 
 ```csharp
 public sealed class StorePurchase { string ProductId; string TransactionId; string Receipt; /* ToString sans Receipt */ }

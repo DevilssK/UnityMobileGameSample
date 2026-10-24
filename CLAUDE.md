@@ -8,7 +8,7 @@ Contrat de travail complet : `Doc/CLAUDE_UNITY_MOBILE_FOUNDATION.md`. Le lire (a
 | --- | --- |
 | `UnityProject/` | Projet Unity hôte, dérivé de `GemHunterMatch3/` (dépôt `Unity-Technologies/com.unity.services.samples.use-cases`, commit de référence `575661c6`) |
 | `UnityProject/GemHunterUGSCloud/` | Backend Cloud Code C#, conservé dans le projet Unity (décision 0004) |
-| `SharedPackages/com.studio.mobilefoundation/` | Package UPM commun (à créer à l'étape C) |
+| `SharedPackages/com.devilcorp.mobilefoundation/` | Package UPM commun, namespace `DevilCorp.MobileFoundation` (créé avec le module Purchases, décision 0006) |
 | `Doc/` | Brief, décisions (`Doc/decisions/`), guides |
 
 Éditeurs installés : Unity `6000.3.26f1`, `6000.6.5f1`, `6000.6.7f1` (`C:/Program Files/Unity/Hub/Editor/`). .NET SDK 10. Version cible : Unity `6000.6.7f1` (décision 0005, matrice dans `Doc/dependencies.md`).
