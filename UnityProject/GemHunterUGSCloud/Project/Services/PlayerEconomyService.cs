@@ -183,10 +183,10 @@ public class PlayerEconomyService
                 var isActive = await CheckInfiniteHeartExpiration(context, infiniteHeartItem);
                 if (isActive)
                 {
-                    var instanceData = ParseInfiniteHeartInstanceData(infiniteHeartItem.InstanceData);
-                    if (instanceData != null)
+                    var heartState = ResolveInfiniteHeartState(infiniteHeartItem.InstanceData, infiniteHeartItem.Created?.Date);
+                    if (heartState != null)
                     {
-                        economyData.InfiniteHeartsExpiryTimestamp = instanceData.ActivatedAt + Convert.ToInt64(m_InfiniteHeartDuration);
+                        economyData.InfiniteHeartsExpiryTimestamp = heartState.Value.ActivatedAt + Convert.ToInt64(m_InfiniteHeartDuration);
                     }
                 }
             }
@@ -589,22 +589,22 @@ public class PlayerEconomyService
     {
         try
         {
-            var instanceData = ParseInfiniteHeartInstanceData(infiniteHeartItem.InstanceData);
+            var instanceData = ResolveInfiniteHeartState(infiniteHeartItem.InstanceData, infiniteHeartItem.Created?.Date);
             if (instanceData == null) return false;
 
             long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            long expiryTime = instanceData.ActivatedAt + Convert.ToInt64(m_InfiniteHeartDuration);
+            long expiryTime = instanceData.Value.ActivatedAt + Convert.ToInt64(m_InfiniteHeartDuration);
 
             // If expired and still marked as active, update to inactive
-            if (currentTime > expiryTime && instanceData.Active)
+            if (currentTime > expiryTime && instanceData.Value.Active)
             {
-                await UpdateInfiniteHeartStatus(context, infiniteHeartItem.PlayersInventoryItemId, instanceData.ActivatedAt, false);
+                await UpdateInfiniteHeartStatus(context, infiniteHeartItem.PlayersInventoryItemId, instanceData.Value.ActivatedAt, false);
                 m_Logger.LogInformation("Marked expired infinite heart as inactive for player {PlayerId}. Expiry time: {ExpiryTime}, Current time: {CurrentTime}", 
                     context.PlayerId, expiryTime, currentTime);
                 return false;
             }
 
-            return instanceData.Active;
+            return instanceData.Value.Active;
         }
         catch (Exception e)
         {
@@ -641,36 +641,36 @@ public class PlayerEconomyService
             active, context.PlayerId);
     }
     
-    private InfiniteHeartData? ParseInfiniteHeartInstanceData(object? instanceData)
+    /// <summary>
+    /// Reads an infinite heart state. A heart granted by Economy redeem (bundle .ecr) carries no instance
+    /// data: it is treated as activated when the item was created, so no second write follows the redeem.
+    /// </summary>
+    internal static (bool Active, long ActivatedAt)? ResolveInfiniteHeartState(object? instanceData, DateTime? createdAt)
     {
-        if (instanceData == null) return null;
-
-        try
+        if (instanceData != null)
         {
-            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(instanceData.ToString() ?? string.Empty);
-            if (data != null && 
-                data.TryGetValue("active", out var activeObj) &&
-                data.TryGetValue("activatedAt", out var activatedAtObj))
+            try
             {
-                return new InfiniteHeartData
+                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(instanceData.ToString() ?? string.Empty);
+                if (data != null &&
+                    data.TryGetValue("active", out var activeObj) &&
+                    data.TryGetValue("activatedAt", out var activatedAtObj))
                 {
-                    Active = Convert.ToBoolean(activeObj),
-                    ActivatedAt = Convert.ToInt64(activatedAtObj)
-                };
+                    return (Convert.ToBoolean(activeObj), Convert.ToInt64(activatedAtObj));
+                }
+            }
+            catch (JsonException)
+            {
+                // Unreadable instance data: fall back on the creation date below.
             }
         }
-        catch (JsonException e)
-        {
-            m_Logger.LogWarning(e, "Failed to parse infinite heart instance data");
-        }
-        
-        return null;
-    }
 
-    private class InfiniteHeartData
-    {
-        public bool Active { get; set; }
-        public long ActivatedAt { get; set; }
+        if (createdAt is { } created)
+        {
+            return (true, new DateTimeOffset(DateTime.SpecifyKind(created, DateTimeKind.Utc)).ToUnixTimeSeconds());
+        }
+
+        return null;
     }
     
     #endregion
