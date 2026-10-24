@@ -24,5 +24,8 @@ namespace DevilCorp.MobileFoundation.Purchases
 
         /// <summary>Finalizes a transaction with the store. Call only after the backend delivered it.</summary>
         void Confirm(string transactionId);
+
+        /// <summary>Retries a failed store connection or product fetch; no-op when ready or already connecting.</summary>
+        void Reconnect();
     }
 }

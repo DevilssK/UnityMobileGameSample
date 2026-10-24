@@ -27,6 +27,8 @@ namespace DevilCorp.MobileFoundation.Purchases
         private readonly Dictionary<string, StorePurchase> _awaitingRetry = new Dictionary<string, StorePurchase>();
 
         private string? _activeProductId;
+        // Transaction the store produced for the player's active purchase; null until it is paid.
+        private string? _activeTransactionId;
         private TaskCompletionSource<PurchaseResult>? _activeCompletion;
 
         public PurchaseCoordinator(IStoreGateway store, IPurchaseFulfillment fulfillment, Action<string>? log = null)
@@ -59,6 +61,8 @@ namespace DevilCorp.MobileFoundation.Purchases
         {
             if (!_store.IsReady)
             {
+                // A failed connection or product fetch is not retried by the SDK: ask again on demand.
+                _store.Reconnect();
                 return Report(new PurchaseResult(productId, PurchaseOutcome.Unavailable, "Store not ready"));
             }
 
@@ -72,6 +76,7 @@ namespace DevilCorp.MobileFoundation.Purchases
 
                 completion = new TaskCompletionSource<PurchaseResult>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _activeProductId = productId;
+                _activeTransactionId = null;
                 _activeCompletion = completion;
             }
 
@@ -107,6 +112,18 @@ namespace DevilCorp.MobileFoundation.Purchases
 
         private void HandlePurchasePending(StorePurchase purchase)
         {
+            lock (_gate)
+            {
+                // Bind the player's purchase to the first new transaction of that product. Recovered
+                // transactions (already known) must not answer the player's current purchase.
+                if (_activeProductId == purchase.ProductId && _activeTransactionId == null
+                    && !_inFlight.Contains(purchase.TransactionId)
+                    && !_awaitingRetry.ContainsKey(purchase.TransactionId))
+                {
+                    _activeTransactionId = purchase.TransactionId;
+                }
+            }
+
             // Fire and forget: FulfillAsync never throws, and the result is reported through events.
             _ = FulfillAsync(purchase);
         }
@@ -119,12 +136,12 @@ namespace DevilCorp.MobileFoundation.Purchases
                 StoreFailure.Unavailable => PurchaseOutcome.Unavailable,
                 _ => PurchaseOutcome.Failed
             };
-            Complete(new PurchaseResult(productId, outcome, $"Store: {failure}"));
+            CompleteFromStore(new PurchaseResult(productId, outcome, $"Store: {failure}"));
         }
 
         private void HandlePurchaseDeferred(string productId)
         {
-            Complete(new PurchaseResult(productId, PurchaseOutcome.Deferred, "Awaiting approval"));
+            CompleteFromStore(new PurchaseResult(productId, PurchaseOutcome.Deferred, "Awaiting approval"));
         }
 
         private async Task FulfillAsync(StorePurchase purchase)
@@ -172,19 +189,44 @@ namespace DevilCorp.MobileFoundation.Purchases
                 FulfillmentStatus.Rejected => PurchaseOutcome.Rejected,
                 _ => PurchaseOutcome.RetryLater
             };
-            Complete(new PurchaseResult(purchase.ProductId, outcome, $"Transaction {purchase.TransactionId}"));
+            CompleteTransaction(purchase.TransactionId,
+                new PurchaseResult(purchase.ProductId, outcome, $"Transaction {purchase.TransactionId}"));
         }
 
-        private void Complete(PurchaseResult result)
+        /// <summary>
+        /// A store failure or deferral carries no transaction: it ends the purchase the store dialog was opened
+        /// for, whatever product ID the SDK reports (it may report an unknown product).
+        /// </summary>
+        private void CompleteFromStore(PurchaseResult result)
         {
             TaskCompletionSource<PurchaseResult>? completion = null;
             lock (_gate)
             {
-                if (_activeProductId == result.ProductId)
+                if (_activeProductId != null && _activeTransactionId == null)
                 {
                     completion = _activeCompletion;
                 }
             }
+
+            Finish(completion, result);
+        }
+
+        private void CompleteTransaction(string transactionId, PurchaseResult result)
+        {
+            TaskCompletionSource<PurchaseResult>? completion = null;
+            lock (_gate)
+            {
+                if (_activeTransactionId == transactionId)
+                {
+                    completion = _activeCompletion;
+                }
+            }
+
+            Finish(completion, result);
+        }
+
+        private void Finish(TaskCompletionSource<PurchaseResult>? completion, PurchaseResult result)
+        {
 
             if (completion != null)
             {
@@ -201,6 +243,7 @@ namespace DevilCorp.MobileFoundation.Purchases
                 if (_activeCompletion == completion)
                 {
                     _activeProductId = null;
+                    _activeTransactionId = null;
                     _activeCompletion = null;
                 }
             }

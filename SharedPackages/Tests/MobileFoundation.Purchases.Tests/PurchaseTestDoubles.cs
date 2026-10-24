@@ -10,6 +10,7 @@ namespace DevilCorp.MobileFoundation.Purchases.Tests
         public bool IsReady { get; set; } = true;
         public List<string> Purchases { get; } = new List<string>();
         public List<string> Confirmations { get; } = new List<string>();
+        public int ReconnectRequests { get; private set; }
 
         public event Action<StorePurchase>? PurchasePending;
         public event Action<string, StoreFailure>? PurchaseFailed;
@@ -17,6 +18,7 @@ namespace DevilCorp.MobileFoundation.Purchases.Tests
 
         public void Purchase(string productId) => Purchases.Add(productId);
         public void Confirm(string transactionId) => Confirmations.Add(transactionId);
+        public void Reconnect() => ReconnectRequests++;
 
         public void RaisePending(StorePurchase purchase) => PurchasePending?.Invoke(purchase);
         public void RaiseFailed(string productId, StoreFailure failure) => PurchaseFailed?.Invoke(productId, failure);

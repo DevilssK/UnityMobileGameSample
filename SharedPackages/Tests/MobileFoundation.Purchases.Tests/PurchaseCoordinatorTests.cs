@@ -228,6 +228,54 @@ namespace DevilCorp.MobileFoundation.Purchases.Tests
         }
 
         [Fact]
+        public async Task RecoveredTransaction_WhenSameProductIsBeingBought_DoesNotCompleteThePlayersPurchase()
+        {
+            _fulfillment.Returns(FulfillmentStatus.RetryLater);
+            var coordinator = CreateCoordinator();
+            _store.RaisePending(Paid("GPA.OLD"));
+
+            var purchase = coordinator.PurchaseAsync(ProductId, CancellationToken.None);
+            _fulfillment.Returns(FulfillmentStatus.Delivered);
+            await coordinator.RetryPendingFulfillmentsAsync(CancellationToken.None);
+
+            Assert.False(purchase.IsCompleted);
+            Assert.True(coordinator.IsPurchaseInProgress);
+
+            _fulfillment.Returns(FulfillmentStatus.Delivered);
+            _store.RaisePending(Paid("GPA.NEW"));
+            var result = await purchase;
+
+            Assert.Equal(PurchaseOutcome.Delivered, result.Outcome);
+            Assert.Contains("GPA.NEW", result.Message);
+            Assert.Equal(new[] { "GPA.OLD", "GPA.NEW" }, _store.Confirmations);
+        }
+
+        [Fact]
+        public async Task PurchaseFailed_WithUnknownProductId_CompletesActivePurchase()
+        {
+            var coordinator = CreateCoordinator();
+            var purchase = coordinator.PurchaseAsync(ProductId, CancellationToken.None);
+
+            _store.RaiseFailed(string.Empty, StoreFailure.Failed);
+            var finished = await Task.WhenAny(purchase, Task.Delay(2000));
+
+            Assert.Same(purchase, finished);
+            Assert.Equal(PurchaseOutcome.Failed, (await purchase).Outcome);
+            Assert.False(coordinator.IsPurchaseInProgress);
+        }
+
+        [Fact]
+        public async Task PurchaseAsync_WhenStoreNotReady_RequestsReconnect()
+        {
+            _store.IsReady = false;
+            var coordinator = CreateCoordinator();
+
+            await coordinator.PurchaseAsync(ProductId, CancellationToken.None);
+
+            Assert.Equal(1, _store.ReconnectRequests);
+        }
+
+        [Fact]
         public void StorePurchase_ToString_DoesNotContainReceipt()
         {
             var text = Paid().ToString();

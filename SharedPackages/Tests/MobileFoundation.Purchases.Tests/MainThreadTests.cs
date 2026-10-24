@@ -67,6 +67,7 @@ namespace DevilCorp.MobileFoundation.Purchases.Tests
             public event System.Action<string>? PurchaseDeferred { add { } remove { } }
             public void Purchase(string productId) { }
             public void Confirm(string transactionId) => ConfirmContext = SynchronizationContext.Current;
+            public void Reconnect() { }
             public void RaisePending(StorePurchase purchase) => PurchasePending?.Invoke(purchase);
         }
     }
