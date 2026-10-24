@@ -1,0 +1,17 @@
+{
+    "name": "DevilCorp.MobileFoundation.Purchases.UnityIap",
+    "rootNamespace": "DevilCorp.MobileFoundation.Purchases.UnityIap",
+    "references": [
+        "DevilCorp.MobileFoundation.Purchases",
+        "Unity.Purchasing"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
