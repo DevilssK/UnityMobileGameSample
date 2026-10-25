@@ -70,7 +70,8 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
         void PlayerPrefsLog()
         {
             var sessionToken = PlayerPrefs.GetString($"{Application.cloudProjectId}.{AuthenticationService.Instance.Profile}.unity.services.authentication.session_token");
-            var playerPrefsMessageResult = string.IsNullOrEmpty(sessionToken) ? "No session token for this profile" : $"Session token: {sessionToken}";
+            // Never log the session token itself: it is a credential.
+            var playerPrefsMessageResult = string.IsNullOrEmpty(sessionToken) ? "No session token for this profile" : "Session token present for this profile";
             Logger.Log(playerPrefsMessageResult);
         }
         
