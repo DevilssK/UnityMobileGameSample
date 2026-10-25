@@ -1,6 +1,6 @@
 # 0008 — Remplacement d'Unity Economy : validation serveur des achats et portefeuille protégé optionnel
 
-Date : 2026-10-25 · Statut : **périmètre accepté (A1-B, 2026-10-25) ; persistance du portefeuille à valider** (voir `Doc/revue/2026-10-25-realignement-diagnostic.md`)
+Date : 2026-10-25 · Statut : **acceptée** (A1-B, persistance Cloud Save avec délai de grâce, spec validée le 2026-10-25) ; implémentée sur `feature/protected-wallet`, vérifiée en `development` (`Doc/backend-achats.md`). Validation des reçus Apple/Google : spec suivante.
 
 ## Problème
 Unity Economy n'accepte plus de nouveaux projets depuis le 2026-09-08 ; le projet UGS du template répond `403` sur Economy. Or Economy redeem était le propriétaire unique de l'attribution des achats (décision 0001), et toute la méta de Gem Hunter reposait sur Economy.
