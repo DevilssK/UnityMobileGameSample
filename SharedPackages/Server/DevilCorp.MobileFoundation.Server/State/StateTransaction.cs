@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DevilCorp.MobileFoundation.Server.Wallet;
 using Newtonsoft.Json.Linq;
 using Unity.Services.CloudCode.Core;
 
@@ -21,12 +22,16 @@ public sealed class StateTransaction
     private readonly IProtectedStateStore _store;
     private readonly IClock _clock;
     private readonly Func<TimeSpan, Task> _delay;
+    private readonly ProtectedStateOptions? _guard;
 
-    public StateTransaction(IProtectedStateStore store, IClock clock, Func<TimeSpan, Task>? delay = null)
+    /// <param name="guard">When set, every run also reads the wallet and refuses to run before it exists, during
+    /// its creation grace period, or with an unknown schema. Production code always passes it.</param>
+    public StateTransaction(IProtectedStateStore store, IClock clock, Func<TimeSpan, Task>? delay = null, ProtectedStateOptions? guard = null)
     {
         _store = store;
         _clock = clock;
         _delay = delay ?? (d => Task.Delay(d));
+        _guard = guard;
     }
 
     public async Task<TResult> RunAsync<TResult>(
@@ -35,9 +40,15 @@ public sealed class StateTransaction
         Func<StateSnapshot, StateMutation<TResult>> decide,
         CancellationToken ct)
     {
+        var keysToRead = _guard == null ? keys : keys.Append(WalletState.Key).Distinct().ToList();
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            var snapshot = new StateSnapshot(await _store.ReadAsync(context, keys, ct));
+            var snapshot = new StateSnapshot(await _store.ReadAsync(context, keysToRead, ct));
+            if (_guard != null)
+            {
+                CheckGuard(snapshot, _guard);
+            }
+
             var mutation = decide(snapshot);
             if (mutation.Writes.Count == 0)
             {
@@ -59,6 +70,24 @@ public sealed class StateTransaction
         }
 
         throw new GameOperationException(ErrorCodes.RetryLater, "too many concurrent updates");
+    }
+
+    private void CheckGuard(StateSnapshot snapshot, ProtectedStateOptions guard)
+    {
+        if (!snapshot.TryGet<WalletState>(WalletState.Key, out var wallet))
+        {
+            throw new GameOperationException(ErrorCodes.RetryLater, "state not initialized");
+        }
+
+        if (wallet.SchemaVersion != WalletState.CurrentSchemaVersion)
+        {
+            throw new GameOperationException(ErrorCodes.ConfigurationError, $"unknown wallet schema {wallet.SchemaVersion}");
+        }
+
+        if (_clock.UtcNowUnixMs < wallet.CreatedAtUnixMs + (long)guard.GracePeriod.TotalMilliseconds)
+        {
+            throw new GameOperationException(ErrorCodes.RetryLater, "state was just created");
+        }
     }
 
     private static TimeSpan RetryDelay() =>
