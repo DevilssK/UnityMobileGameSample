@@ -24,5 +24,6 @@ Unity Economy n'accepte plus de nouveaux projets depuis le 2026-09-08 ; le proje
 - Reconstruire toute l'économie de Gem Hunter côté serveur (spec du 2026-10-25) : elle couvre des fonctions exclues par le brief et contient des garanties non établies.
 
 ## Conséquences
-- La spec `Doc/specs/2026-10-25-economie-cloud-save-design.md` sera remplacée par une spec « portefeuille protégé et validation des achats ».
+- La spec économie du 2026-10-25 est supprimée et remplacée par `Doc/specs/2026-10-25-portefeuille-protege-design.md` (à relire), puis par une spec « validation des achats » (Apple/Google).
+- Persistance retenue par le propriétaire le 2026-10-25 : Cloud Save avec délai de grâce à la création. Fonctions de démo conservées : boutique de pièces, zones, fin de niveau et cœurs, récompenses quotidiennes.
 - Les tests de concurrence de la section 7 de la demande de revue redeviennent obligatoires : création initiale, dépenses concurrentes, réponse perdue, rejeu au-delà de 200 transactions.

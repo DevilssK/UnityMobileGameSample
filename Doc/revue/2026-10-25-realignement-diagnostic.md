@@ -42,7 +42,7 @@ Niveaux de preuve utilisés : **[D]** fait documenté par une source officielle,
 | Décision 0001 (permanents + pub locale, portefeuille plus tard) | Conserver la politique ; corriger | La politique reste la bonne base (A1). Seul « propriétaire de l'attribution = Economy redeem » tombe : remplacé par la proposition 0008 (à valider). |
 | Décisions 0002, 0003, 0004, 0006, 0007 | Conserver | Hypothèses inchangées. |
 | Décision 0005 (Unity 6000.6.7f1) | Conserver ; corriger une conséquence | « 6.7 annoncée » devient « 6.7 en bêta ; Cloud Code 3.0, Stateful et .NET 10 l'exigent ». |
-| Spec `2026-10-25-economie-cloud-save-design.md` | **Suspendue ; à supprimer si A1 est validé** | Objectif hors du but du socle. Garanties fausses corrigées dans le texte, statut mis à jour. |
+| Spec `2026-10-25-economie-cloud-save-design.md` | **Supprimée** (après A1-B) | Objectif hors du but du socle et garanties fausses. Remplacée par `Doc/specs/2026-10-25-portefeuille-protege-design.md`. |
 | Sous-projet 2 « validation sans Economy » (annoncé, pas écrit) | Conserver le besoin ; reformuler | C'est le vrai besoin serveur du socle. Il devient la spec unique « validation et registre des achats » (A2, A3, A7). |
 | `Doc/backend-achats.md` | Corriger | Décrit un flux Economy qui ne peut pas tourner sur ce projet UGS. Les hypothèses 2 à 9, propres à Economy, deviennent sans objet si A1/A2 sont validés. |
 | `Doc/dependencies.md` | Corriger | Economy inutilisable ici, .NET 6 hors support, contradiction Cloud Code 3.0, Remote Catalog. |
