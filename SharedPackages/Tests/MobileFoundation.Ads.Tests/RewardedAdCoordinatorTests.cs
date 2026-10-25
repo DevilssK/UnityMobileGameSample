@@ -142,8 +142,39 @@ namespace DevilCorp.MobileFoundation.Ads.Tests
         }
 
         [Fact]
+        public async Task ShowAsync_WhileRetryPending_StaleRetryDoesNotLoadAgain()
+        {
+            _gateway.IsReady = false;
+            var coordinator = CreateCoordinator();
+            coordinator.Start();
+            _gateway.RaiseLoadFailed();
+
+            await coordinator.ShowAsync(Placement, CancellationToken.None);
+            await _delay.ReleaseAllAsync();
+
+            Assert.Equal(2, _gateway.LoadCalls);
+        }
+
+        [Fact]
+        public async Task Loaded_WhileRetryPending_StaleRetryDoesNotLoad()
+        {
+            _gateway.IsReady = false;
+            var coordinator = CreateCoordinator();
+            coordinator.Start();
+            _gateway.RaiseLoadFailed();
+
+            _gateway.IsReady = true;
+            _gateway.RaiseLoaded();
+            await _delay.ReleaseAllAsync();
+
+            Assert.Equal(1, _gateway.LoadCalls);
+            Assert.True(_availability[_availability.Count - 1]);
+        }
+
+        [Fact]
         public async Task LoadFailures_StopAfterMaxRetries()
         {
+            _gateway.IsReady = false;
             var coordinator = CreateCoordinator();
             coordinator.Start();
 
@@ -161,6 +192,7 @@ namespace DevilCorp.MobileFoundation.Ads.Tests
         [Fact]
         public async Task Loaded_AfterFailures_ResetsRetries()
         {
+            _gateway.IsReady = false;
             var coordinator = CreateCoordinator();
             coordinator.Start();
             _gateway.RaiseLoadFailed();
@@ -169,6 +201,7 @@ namespace DevilCorp.MobileFoundation.Ads.Tests
             _gateway.RaiseLoaded();
 
             Assert.True(_availability[_availability.Count - 1]);
+            // The loaded ad was then consumed elsewhere (e.g. expired): loads fail again.
             for (var attempt = 0; attempt < RewardedAdCoordinator.MaxLoadRetries; attempt++)
             {
                 _gateway.RaiseLoadFailed();

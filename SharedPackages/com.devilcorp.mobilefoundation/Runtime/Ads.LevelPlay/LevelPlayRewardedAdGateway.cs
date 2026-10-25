@@ -18,7 +18,9 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
         private readonly Action<string> _log;
         private LevelPlayRewardedAd? _rewardedAd;
         private bool _initializeRequested;
+        private bool _initializeFailed;
         private bool _loadRequested;
+        private string? _userId;
 
         public LevelPlayRewardedAdGateway(LevelPlayAdsSettings settings, Action<string>? log = null)
         {
@@ -38,7 +40,8 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
 
         /// <summary>
         /// Initializes the SDK once. <paramref name="userId"/> is the player id LevelPlay attaches to
-        /// server-to-server callbacks; it is never logged here.
+        /// server-to-server callbacks; it is never logged here. After a failed init, the next
+        /// <see cref="Load"/> initializes again, so the coordinator's bounded retries cover init too.
         /// </summary>
         public void Initialize(string? userId)
         {
@@ -47,6 +50,12 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
                 return;
             }
 
+            _userId = userId;
+            StartInit();
+        }
+
+        private void StartInit()
+        {
             var appKey = PlatformValue(_settings.AndroidAppKey, _settings.IosAppKey);
             if (appKey == null)
             {
@@ -55,6 +64,7 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
             }
 
             _initializeRequested = true;
+            _initializeFailed = false;
             LevelPlaySdk.OnInitSuccess += HandleInitSuccess;
             LevelPlaySdk.OnInitFailed += HandleInitFailed;
 
@@ -63,7 +73,7 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
                 LevelPlaySdk.SetMetaData("is_test_suite", "enable");
             }
 
-            LevelPlaySdk.Init(appKey, userId);
+            LevelPlaySdk.Init(appKey, _userId);
         }
 
         public void Load()
@@ -77,6 +87,12 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
             if (_rewardedAd == null)
             {
                 _loadRequested = true;
+                if (_initializeFailed)
+                {
+                    // A failure is reported again through LoadFailed, which keeps the retries bounded.
+                    StartInit();
+                }
+
                 return;
             }
 
@@ -148,8 +164,9 @@ namespace DevilCorp.MobileFoundation.Ads.LevelPlay
 
         private void HandleInitFailed(LevelPlayInitError error)
         {
-            // Init can be requested again: LevelPlay retries on the next Initialize call.
+            // The next Load (coordinator retry or player request) initializes again.
             _initializeRequested = false;
+            _initializeFailed = true;
             LevelPlaySdk.OnInitSuccess -= HandleInitSuccess;
             LevelPlaySdk.OnInitFailed -= HandleInitFailed;
             LoadFailed?.Invoke($"init failed ({error.ErrorCode}): {error.ErrorMessage}");

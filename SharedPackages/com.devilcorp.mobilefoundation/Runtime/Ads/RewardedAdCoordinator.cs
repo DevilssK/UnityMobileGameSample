@@ -25,6 +25,7 @@ namespace DevilCorp.MobileFoundation.Ads
         private ActiveAd? _current;
         private bool _started;
         private int _loadFailures;
+        private int _loadGeneration;
 
         public RewardedAdCoordinator(
             IRewardedAdGateway gateway,
@@ -58,7 +59,7 @@ namespace DevilCorp.MobileFoundation.Ads
             }
 
             _started = true;
-            _gateway.Load();
+            RequestLoad();
         }
 
         public Task<RewardedAdResult> ShowAsync(string placement, CancellationToken cancellationToken)
@@ -72,7 +73,7 @@ namespace DevilCorp.MobileFoundation.Ads
             {
                 // An explicit request restarts loading, even after the retry budget was spent.
                 _loadFailures = 0;
-                _gateway.Load();
+                RequestLoad();
                 return Task.FromResult(new RewardedAdResult(RewardedAdOutcome.Unavailable, placement));
             }
 
@@ -145,6 +146,7 @@ namespace DevilCorp.MobileFoundation.Ads
 
         private void HandleLoaded()
         {
+            _loadGeneration++;
             _loadFailures = 0;
             AvailabilityChanged?.Invoke(true);
         }
@@ -160,10 +162,18 @@ namespace DevilCorp.MobileFoundation.Ads
             }
 
             _log($"Rewarded ad load failed ({reason}); retry {_loadFailures}/{MaxLoadRetries}");
+            var generation = _loadGeneration;
             try
             {
                 await _delay(DefaultLoadRetryDelay);
-                _gateway.Load();
+
+                // Stale retry: a newer load started, an ad loaded, or one is on screen.
+                if (generation != _loadGeneration || _gateway.IsReady || _current != null)
+                {
+                    return;
+                }
+
+                RequestLoad();
             }
             catch (Exception e)
             {
@@ -183,6 +193,13 @@ namespace DevilCorp.MobileFoundation.Ads
             // The shown ad is consumed: load the next one.
             AvailabilityChanged?.Invoke(false);
             _loadFailures = 0;
+            RequestLoad();
+        }
+
+        // Every load bumps the generation, so retry delays scheduled for an older load are abandoned.
+        private void RequestLoad()
+        {
+            _loadGeneration++;
             _gateway.Load();
         }
 

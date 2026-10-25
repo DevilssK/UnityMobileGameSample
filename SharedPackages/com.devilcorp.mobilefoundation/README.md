@@ -189,14 +189,36 @@ adGateway.Initialize(playerId);        // LevelPlay.Init ; l'id n'est jamais log
 rewardedAds.Start();                   // premier chargement ; un Load demandé avant l'init attend l'init
 ```
 
+Si l'init LevelPlay échoue (réseau…), l'échec est remonté comme un échec de chargement. Le prochain chargement relance l'init, que ce soit une relance automatique (3 au plus) ou une demande du joueur.
+
 Les app keys et ad units sont publics, mais propres à chaque jeu et plateforme : les garder dans la configuration du jeu. La suite de test LevelPlay ne s'ouvre jamais dans un build de production, même si `enableTestSuite` vaut `true`.
 
 ### Afficher une pub depuis le jeu
 
-```csharp
-button.SetEnabled(rewardedAds.IsAdReady);
-rewardedAds.AvailabilityChanged += ready => button.SetEnabled(ready);
+**Accorder la récompense à un seul endroit.** `AdCompleted` est levé pour **chaque** pub terminée, y compris celles dont l'appelant a déjà reçu `Rewarded` par `ShowAsync`. Accorder dans les deux revient à accorder deux fois. Choisir l'un des deux modèles :
 
+**Modèle A — recommandé si la récompense doit survivre à la fermeture de l'écran :** accorder dans `AdCompleted`, et n'utiliser `ShowAsync` que pour l'UI.
+
+```csharp
+// Abonnement unique, par exemple au bootstrap ou dans un service du jeu qui vit toute la session
+rewardedAds.AdCompleted += result =>
+{
+    if (result.Outcome == RewardedAdOutcome.Rewarded && result.Placement == "Level_Failed")
+    {
+        GrantLocalSecondChance();      // seul endroit qui accorde
+    }
+};
+
+// Dans l'écran : uniquement l'UI
+button.SetEnabled(rewardedAds.IsAdReady);
+rewardedAds.AvailabilityChanged += ready => button.SetEnabled(ready);   // se désabonner à la fermeture
+var result = await rewardedAds.ShowAsync("Level_Failed", cancellationToken);
+ShowFeedback(result.Outcome);          // message, déblocage du bouton ; n'accorde rien
+```
+
+**Modèle B — plus simple, si l'écran reste ouvert pendant la pub :** accorder sur le résultat de `ShowAsync` et ne pas utiliser `AdCompleted`. Si l'attente est annulée (fermeture de l'écran), la récompense de cette pub est perdue, ce qui est acceptable pour un effet local de faible valeur.
+
+```csharp
 var result = await rewardedAds.ShowAsync("Level_Failed", cancellationToken);
 if (result.Outcome == RewardedAdOutcome.Rewarded)
 {
@@ -212,9 +234,9 @@ if (result.Outcome == RewardedAdOutcome.Rewarded)
 | `Failed` | Affichage impossible |
 | `AlreadyShowing` | Une pub est déjà à l'écran |
 
-Si l'attente est annulée (`NotRewarded`, message `wait cancelled`) alors que la pub est encore à l'écran, le vrai résultat arrive par `AdCompleted`. S'y abonner si la récompense doit survivre à la fermeture de l'écran appelant.
+Si l'attente est annulée (`NotRewarded`, message `wait cancelled`) alors que la pub est encore à l'écran, le vrai résultat arrive quand même par `AdCompleted` : c'est ce qui rend le modèle A robuste.
 
-Exemple réel : `UnityProject/Assets/GemHunterUGS/Scripts/Ads/AdRewardManagerClient.cs`, composé dans `Core/GameInitializer.cs`.
+Exemple réel (modèle B) : `UnityProject/Assets/GemHunterUGS/Scripts/Ads/AdRewardManagerClient.cs`, composé dans `Core/GameInitializer.cs`.
 
 ### Autre fournisseur de pubs
 

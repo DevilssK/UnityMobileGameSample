@@ -17,7 +17,11 @@ namespace DevilCorp.MobileFoundation.Ads
 
         event Action<bool>? AvailabilityChanged;
 
-        /// <summary>Raised once for every ad that finished, including ads whose caller stopped waiting.</summary>
+        /// <summary>
+        /// Raised once for every ad that finished, including ads whose caller stopped waiting and ads whose
+        /// caller already received the result from <see cref="ShowAsync"/>. Grant a reward either here or from
+        /// the <see cref="ShowAsync"/> result, never both.
+        /// </summary>
         event Action<RewardedAdResult>? AdCompleted;
 
         /// <summary>Requests the first load. Calling it again does nothing.</summary>
