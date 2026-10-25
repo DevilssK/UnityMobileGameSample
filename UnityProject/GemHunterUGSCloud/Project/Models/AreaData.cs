@@ -23,6 +23,9 @@ public class AreaData
     [JsonProperty("unlockRequirement_Stars")]
     public int UnlockRequirement_Stars { get; set; } = 1;
     
+    [JsonProperty("completionRewardClaimed")]
+    public bool CompletionRewardClaimed { get; set; }
+
     [JsonProperty("upgradableAreaItems")]
     public List<UpgradableAreaItem> UpgradableAreaItems { get; set; }
 
