@@ -1,0 +1,25 @@
+{
+    "name": "DevilCorp.MobileFoundation.Ads.LevelPlay",
+    "rootNamespace": "DevilCorp.MobileFoundation.Ads.LevelPlay",
+    "references": [
+        "DevilCorp.MobileFoundation.Ads",
+        "Unity.LevelPlay"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "DEVILCORP_LEVELPLAY"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.services.levelplay",
+            "expression": "9.0.0",
+            "define": "DEVILCORP_LEVELPLAY"
+        }
+    ],
+    "noEngineReferences": false
+}
