@@ -7,10 +7,14 @@ using Unity.Services.Core;
 using Logger = GemHunterUGS.Scripts.Utilities.Logger;
 namespace GemHunterUGS.Scripts.Login_and_AccountManagement
 {
-#if UNITY_ANDROID
+#if UNITY_ANDROID && GOOGLE_PLAY_GAMES_SDK
     using GooglePlayGames;
     using GooglePlayGames.BasicApi;
 #endif
+    /// <summary>
+    /// Google Play Games sign-in. The plugin is not a project dependency: define GOOGLE_PLAY_GAMES_SDK after
+    /// importing it. Without it, Android builds compile and Google sign-in reports an error.
+    /// </summary>
     public class GooglePlayGamesSignIn : MonoBehaviour
     {
 #if UNITY_ANDROID
@@ -31,14 +35,19 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
             
             m_GameManagerUGS = GameSystemLocator.Get<GameManagerUGS>();
             m_AccountUIController = GetComponent<AccountManagementUIController>();
-            
+
+#if GOOGLE_PLAY_GAMES_SDK
             PlayGamesPlatform.DebugLogEnabled = true; // Enable debug logs
             PlayGamesPlatform.Activate();
             
             // Perform automatic silent authentication (recommended for Android)
             AuthenticateWithGooglePlayGames();
+#else
+            Logger.LogWarning("Google Play Games plugin not installed (GOOGLE_PLAY_GAMES_SDK undefined); Google sign-in is disabled.");
+#endif
         }
-        
+
+#if GOOGLE_PLAY_GAMES_SDK
         // Sign in with Google
         private void AuthenticateWithGooglePlayGames()
         {
@@ -63,7 +72,8 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
                     Logger.Log("Login with Google Play games successful.");
                     PlayGamesPlatform.Instance.RequestServerSideAccess(true, code =>
                     {
-                        Logger.Log("Authorization code: " + code);
+                        // Never log the authorization code: it is a credential.
+                        Logger.Log("Google Play Games authorization code received.");
                         GooglePlayGamesToken = code;
                         // Token will be used in SignInWithGooglePlayGames
                     });
@@ -94,9 +104,13 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
                     break;
             }
         }
-        
+#endif
+
         public void StartSignInOrLink()
         {
+#if !GOOGLE_PLAY_GAMES_SDK
+            m_AccountUIController?.OnAuthenticationError("Google", "Google Play Games is not available in this build");
+#else
             if (!PlayGamesPlatform.Instance.IsAuthenticated())
             {
                 Logger.LogWarning("Not yet authenticated with Google Play Games -- attempting login again");
@@ -106,6 +120,7 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
 
             // Already authenticated with GPG, proceed with Unity Authentication
             SignInOrLinkWithGooglePlayGames();
+#endif
         }
         
         /// <summary>
@@ -192,7 +207,11 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
         /// </summary>
         public bool IsAuthenticated()
         {
+#if GOOGLE_PLAY_GAMES_SDK
             return PlayGamesPlatform.Instance?.IsAuthenticated() == true;
+#else
+            return false;
+#endif
         }
         
         #endif
