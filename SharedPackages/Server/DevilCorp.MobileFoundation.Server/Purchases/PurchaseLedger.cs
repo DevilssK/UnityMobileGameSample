@@ -55,11 +55,15 @@ public static class PurchaseLedger
     public static string KeyFor(string transactionId) =>
         KeyPrefix + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(transactionId))).ToLowerInvariant();
 
-    /// <summary>Pure decision for one attempt; <paramref name="writes"/> is empty unless delivering now.</summary>
+    /// <summary>
+    /// Pure decision for one attempt; <paramref name="writes"/> is empty unless delivering now. The ledger is
+    /// checked first: an already delivered transaction succeeds even if its product left the catalog since.
+    /// A null <paramref name="product"/> (unknown to the catalog) is refused only for a new transaction.
+    /// </summary>
     public static PurchaseOutcome Apply(
         StateSnapshot snapshot,
         WalletState wallet,
-        PurchaseProduct product,
+        PurchaseProduct? product,
         string store,
         string transactionId,
         WalletCatalog catalog,
@@ -71,6 +75,11 @@ public static class PurchaseLedger
         {
             writes = new Dictionary<string, object>();
             return PurchaseOutcome.AlreadyDelivered;
+        }
+
+        if (product == null)
+        {
+            throw new GameOperationException(ErrorCodes.PurchaseRejected, "unknown product");
         }
 
         if (wallet.PurchaseCount >= MaxRecords)
@@ -99,7 +108,7 @@ public static class PurchaseLedger
         StateTransaction transaction,
         IExecutionContext context,
         IClock clock,
-        PurchaseProduct product,
+        PurchaseProduct? product,
         string store,
         string transactionId,
         WalletCatalog catalog,

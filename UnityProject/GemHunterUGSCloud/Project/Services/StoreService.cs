@@ -60,7 +60,8 @@ public class StoreService
         }
 
         // Development only: the fake store has no verified product id, so the catalog id from the client is used.
-        var product = m_Catalog.FindByCatalogId(productId) ?? throw Rejected(context, productId, parsed.TransactionId, "unknown product");
+        // Null for an unknown product: refused only if the transaction was never delivered (ledger checked first).
+        var product = m_Catalog.FindByCatalogId(productId);
 
         PurchaseDelivery delivery;
         try
@@ -72,6 +73,10 @@ public class StoreService
             m_Logger.LogInformation("Purchase {TransactionLogId} of {ProductId} from {Store}: {Outcome} (correlation {CorrelationId})",
                 logId, productId, k_FakeStoreName, delivery.Outcome, context.CorrelationId);
             return EconomyView.From(delivery.Wallet, tuning.Wallet);
+        }
+        catch (GameOperationException e) when (e.Code == ErrorCodes.PurchaseRejected)
+        {
+            throw Rejected(context, productId, parsed.TransactionId, e.Message.Substring(e.Code.Length + 2));
         }
         catch (GameOperationException e)
         {

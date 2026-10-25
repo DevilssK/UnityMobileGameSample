@@ -98,6 +98,19 @@ public class StoreServiceTests
     }
 
     [Fact]
+    public async Task HandlePurchase_ReplayAfterProductRemovedFromCatalog_ReturnsDeliveredState()
+    {
+        var context = await _harness.NewPlayerAsync();
+        await _service.HandlePurchase(context, "COIN_PACK_100", Receipt("fake", "fake-5"), "fake-5");
+        var withoutProduct = new StoreService(GameTestHarness.Logger<StoreService>(), _harness.State,
+            PurchaseCatalog.Parse(Newtonsoft.Json.Linq.JToken.Parse("{\"products\":[]}")));
+
+        var replay = await withoutProduct.HandlePurchase(context, "COIN_PACK_100", Receipt("fake", "fake-5"), "fake-5");
+
+        Assert.Equal(300, replay.Currencies["COIN"]);
+    }
+
+    [Fact]
     public async Task HandlePurchase_DuringCreationGracePeriod_RetriesLater()
     {
         var context = GameTestHarness.Context();
