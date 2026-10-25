@@ -73,7 +73,7 @@ namespace DevilCorp.MobileFoundation.Purchases.UnityIap
         {
             if (_store == null || !_pendingOrders.TryGetValue(transactionId, out var order))
             {
-                _log($"No pending order to confirm for transaction {transactionId}");
+                _log($"No pending order to confirm for transaction {TransactionLogId.From(transactionId)}");
                 return;
             }
 

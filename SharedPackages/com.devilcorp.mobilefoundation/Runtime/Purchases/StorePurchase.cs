@@ -16,12 +16,15 @@ namespace DevilCorp.MobileFoundation.Purchases
 
         public string ProductId { get; }
 
-        /// <summary>Store transaction identifier; safe to log for support correlation.</summary>
+        /// <summary>Store transaction identifier. Never log it: on Google Play it is the purchase token.</summary>
         public string TransactionId { get; }
 
         /// <summary>Store proof sent to the backend. Never log it.</summary>
         public string Receipt { get; }
 
-        public override string ToString() => $"{ProductId} ({TransactionId})";
+        /// <summary>Safe to log; see <see cref="TransactionLogId"/>.</summary>
+        public string LogId => TransactionLogId.From(TransactionId);
+
+        public override string ToString() => $"{ProductId} ({LogId})";
     }
 }

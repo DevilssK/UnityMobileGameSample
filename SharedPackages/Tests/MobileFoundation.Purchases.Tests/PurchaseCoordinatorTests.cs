@@ -281,7 +281,7 @@ namespace DevilCorp.MobileFoundation.Purchases.Tests
             var text = Paid().ToString();
 
             Assert.DoesNotContain("secret-receipt", text);
-            Assert.Contains("GPA.1", text);
+            Assert.DoesNotContain("GPA.1", text);
         }
     }
 }

@@ -39,7 +39,7 @@ public class StoreService
     /// this player, so the client can confirm the transaction with the store. Throws an error whose
     /// message starts with PURCHASE_REJECTED (do not retry) or PURCHASE_RETRY_LATER (keep pending).
     /// </summary>
-    /// <param name="transactionId">Store transaction ID, used only for support correlation in logs.</param>
+    /// <param name="transactionId">Store transaction ID (the purchase token on Google Play): logged only as <see cref="TransactionLogId"/>.</param>
     [CloudCodeFunction("HandlePurchase")]
     public async Task<PlayerEconomyData> HandlePurchase(
         IExecutionContext context,
@@ -47,8 +47,8 @@ public class StoreService
         string receipt,
         string transactionId)
     {
-        m_Logger.LogInformation("Processing transaction {TransactionId} for product {ProductId} (correlation {CorrelationId})",
-            transactionId, productId, context.CorrelationId);
+        m_Logger.LogInformation("Processing transaction {TransactionLogId} for product {ProductId} (correlation {CorrelationId})",
+            TransactionLogId.From(transactionId), productId, context.CorrelationId);
 
         var result = await m_PurchaseRedeemer.RedeemAsync(context, productId, receipt);
 
