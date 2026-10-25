@@ -42,7 +42,7 @@ namespace GemHunterUGS.Scripts.Store
 
             try
             {
-                var economyData = await m_BindingsProvider.GemHunterBindings.HandlePurchase(
+                var economyData = await m_BindingsProvider.Store.HandlePurchase(
                     purchase.ProductId, purchase.Receipt, purchase.TransactionId);
                 m_EconomyClient.HandleEconomyUpdate(economyData);
                 return FulfillmentStatus.Delivered;

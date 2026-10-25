@@ -148,6 +148,21 @@ Faits utiles :
 3. Batch protected avec une clé en conflit : l'échec de tout le batch est à confirmer pour la classe protected.
 4. Écrire une donnée protected avec un jeton client : le refus est attendu.
 
+**Résultats du spike (2026-10-25, environnement `development`, Cloud Code Apis 0.0.16)** [O] :
+
+| Essai | Résultat |
+| --- | --- |
+| Écriture protected avec le jeton du joueur (`context.AccessToken`, celui que détient le client) | **401 Unauthorized** sur toutes les écritures : le client ne peut pas écrire en protected. Les écritures serveur exigent `context.ServiceToken` |
+| (a) clé absente, writeLock `""` | Acceptée, la clé est créée |
+| (a) clé **existante**, writeLock `""` | Acceptée, la clé est **écrasée** : `""` équivaut à « sans writeLock » |
+| (a) clé absente, writeLock arbitraire `"0"` | 400 Bad Request |
+| (b) clé existante, sans writeLock | Acceptée, écrasée (conforme à la doc) |
+| (c) batch protected de 2 clés, dont une avec un writeLock périmé | **409 Conflict** ; relecture : les **deux** clés gardent leur valeur et leur writeLock (batch atomique) |
+| (c2) batch « clé existante avec bon writeLock + clé nouvelle sans writeLock » | Accepté |
+| (d) `Item.Value` | `Newtonsoft.Json.Linq.JObject` ; `Created` / `Modified` à la seconde |
+
+Conclusion : **aucune création conditionnelle**. Le délai de grâce reste nécessaire (tâche 5 du plan). L'atomicité du batch protected est établie.
+
 Alternatives :
 - **P2** — attendre Unity 6.7 LTS et Stateful Cloud Code (appels sérialisés par joueur). Aucun portefeuille utilisable d'ici là.
 - **P3** — adopter Unity 6.7 bêta maintenant. Déconseillé : bêta, et garanties de commit et de rollback non documentées.
@@ -203,20 +218,20 @@ Alternatives :
 - Alternative : refuser toute restauration vers un autre joueur. Écartée, car un joueur qui réinstalle perdrait ses achats permanents.
 - Alternative : liaison de compte obligatoire. Coût et fournisseurs supplémentaires.
 
-## 8. Plan de preuve (périmètre A1-R)
+## 8. Plan de preuve (mis à jour pour A1-B, état du 2026-10-25)
 
 | Scénario | Niveau | Applicable | État |
 | --- | --- | --- | --- |
-| Deux premières requêtes simultanées avec mutation intermédiaire | Intégration `development` | **Sans objet** en A1-R : aucun état mutable serveur. Obligatoire si A1-B | — |
-| Deux dépenses concurrentes au-delà du solde | — | Sans objet en A1-R (pas de solde serveur) | — |
-| Réponse perdue après écriture, puis répétition | Règles pures + intégration | Oui | À écrire |
-| Rejeu après plus de 200 transactions | Règles pures | Oui (pas d'éviction) | À écrire |
-| Quotidien, coffre, zone cohérents après panne | — | Sans objet si ces fonctions sortent du template ; sinon test de sauvegarde locale | — |
-| Deux droits permanents simultanés | Intégration (batch) | Oui | À écrire |
-| Reçu invalide, mauvaise application, produit, environnement ou bénéficiaire | Règles pures + sandbox | Oui | Règles à écrire ; sandbox impossible sans comptes store |
+| Deux premières requêtes simultanées avec mutation intermédiaire | Règles + transaction (Cloud Save simulé) | Oui | **Fait** : `ConcurrentInitWithMutationDuringGrace_MutationRejectedAndNothingLost` ; en `development`, mutation dans les 30 s → `RETRY_LATER` |
+| Deux dépenses concurrentes au-delà du solde | Transaction (simulé) | Oui | **Fait** : `TwoConcurrentSpendsExceedingBalance_OnlyOneSucceeds` |
+| Réponse perdue après écriture, puis répétition | Transaction + intégration | Oui | **Fait** : `LostResponseThenRetry_PurchaseCreditedOnce`, `ConcurrentIdenticalPurchases_CreditOnce` ; en `development`, même transaction rejouée → pas de second crédit |
+| Rejeu après plus de 200 transactions | Transaction (simulé) | Oui | **Fait** : `Apply_After250Transactions_ReplayOfFirstGivesNoCredit` |
+| Quotidien, zone cohérents après panne | Règles + transaction | Oui (coffres retirés) | **Fait** : état métier et crédit dans un seul batch atomique ; quotidien et zone testés en `development` |
+| Deux droits permanents simultanés | — | Aucun produit permanent dans la démo | Reporté à la spec « validation des achats » |
+| Reçu invalide, mauvaise application, produit, environnement ou bénéficiaire | Règles pures + sandbox | Oui | Partiel : reçu illisible, produit inconnu, faux store hors `development` refusés (tests) ; vérification Apple/Google à venir ; sandbox impossible sans comptes store |
 | Restauration, changement d'appareil ou de compte | Sandbox + appareil | Oui (A7) | Impossible ici sans appareil ni comptes de test |
-| Écriture protected avec un jeton client | Intégration `development` (REST avec jeton joueur) | Oui | Bloqué : environnement `development` absent |
-| Configuration absente, panne réseau, échec de confirmation store | Règles + adaptateur | Oui | Partiellement couvert côté client (coordinateur) |
+| Écriture protected avec un jeton client | Intégration `development` | Oui | **Fait** : HTTP 401 depuis le client et 401 avec `context.AccessToken` côté serveur ; portefeuille inchangé |
+| Configuration absente, panne réseau, échec de confirmation store | Règles + intégration | Oui | Configuration absente **vérifiée** en `development` (`CONFIGURATION_ERROR`, aucune écriture) ; reprise réseau et confirmation store côté client : coordinateur du package |
 | Stateful : exception, timeout, interruption, migration, TTL | — | Sans objet (non retenu) | — |
 
 Rappel : faux store, backend simulé et serveur local ne valent pas une validation Apple ou Google.

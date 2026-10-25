@@ -26,7 +26,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
         private PlayerData m_CloudPlayerData;
         private PlayerInitializationResponse m_LastInitResponse;
         
-        private const int k_MaxGiftHearts = 3;
         private const int MaxInitializeRetries = 3;
         private const int RetryDelay = 1000;
 
@@ -34,7 +33,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
         public event Action<PlayerData, PlayerEconomyData> PlayerDataInitialized;
         public event Action<PlayerData> PlayerDataUpdated; 
         public event Action PlayerInitialized;
-        public event Action<ProfilePicture> ProfilePictureFetched;
         
         public PlayerDataManagerClient(GameManagerUGS gameManagerUGS, PlayerAuthenticationManager authenticationManager, CloudBindingsProvider bindingsProvider, NetworkConnectivityHandler networkHandler)
         {
@@ -96,13 +94,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             PlayerInitialized?.Invoke();
             PlayerDataInitialized?.Invoke(m_LastInitResponse.PlayerData, m_LastInitResponse.EconomyData);    
             PlayerDataUpdated?.Invoke(m_CloudPlayerData);
-            
-            if (m_LastInitResponse.ProfilePicture == null)
-            {
-                Logger.LogWarning("Profile picture is null!");
-                return;
-            }
-            ProfilePictureFetched?.Invoke(m_LastInitResponse.ProfilePicture);
         }
         
         private async Task<bool> InitializePlayerWithRetry()
@@ -121,7 +112,7 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
                 {
                     Logger.LogDemo("Attempting to initialize in CloudCode...");
                     
-                    var initResponse = await m_BindingsProvider.GemHunterBindings.OnSignInHandlePlayerInitialization();
+                    var initResponse = await m_BindingsProvider.PlayerData.OnSignInHandlePlayerInitialization();
                     
                     if (initResponse?.PlayerData == null || initResponse?.EconomyData == null)
                     {
@@ -187,37 +178,38 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             }
         }
         
-        public void UpdateDisplayName(string displayName)
-        {
-            m_CloudPlayerData.DisplayName = displayName;
-            PlayerDataUpdated?.Invoke(m_CloudPlayerData);
-        }
-        
         public void HandleCloudDataUpdate(PlayerData updatedPlayerData)
         {
             m_CloudPlayerData = updatedPlayerData;
             PlayerDataUpdated?.Invoke(m_CloudPlayerData);
         }
         
-        public bool CanModifyGiftHearts(int amount)
+        /// <summary>
+        /// Replaces optimistic local values with the server state, after a call that could not be applied.
+        /// </summary>
+        public async Task ResyncFromServerAsync()
         {
-            if (m_CloudPlayerData.GiftHearts + amount < 0)
+            try
             {
-                return false;
+                var playerData = await m_BindingsProvider.PlayerData.GetPlayerData();
+                if (playerData != null)
+                {
+                    m_CloudPlayerData = playerData;
+                    PlayerDataUpdated?.Invoke(m_CloudPlayerData);
+                }
             }
-            if (amount > k_MaxGiftHearts)
+            catch (Exception ex)
             {
-                Logger.LogVerbose("Max gift hearts reached");
-                return false;
+                Logger.LogError($"Resync from server failed: {ex.Message}");
             }
-            return true;
         }
 
         private async void HandleLevelWon()
         {
+            var operationId = Guid.NewGuid().ToString("N");
             try
             {
-                m_CloudPlayerData = await m_BindingsProvider.GemHunterBindings.HandleLevelWon();
+                m_CloudPlayerData = await CloudRetry.RunAsync(() => m_BindingsProvider.PlayerData.HandleLevelWon(operationId));
                 if (m_CloudPlayerData != null)
                 {
                     Logger.LogDemo("⭐☁ Added star in cloud code");
@@ -228,21 +220,19 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
                     Logger.LogWarning("HandleLevelWon returned null data");
                 }
             }
-            catch (CloudCodeException ex)
-            {
-                Logger.LogError($"CloudCode error handling level won: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                Logger.LogError($"Unexpected error handling level won: {ex.Message}");
+                Logger.LogError($"Level won not applied by the server: {ex.Message}");
+                await ResyncFromServerAsync();
             }
         }
         
         private async void HandleReplayLevelLost()
         {
+            var operationId = Guid.NewGuid().ToString("N");
             try
             {
-                var playerData = await m_BindingsProvider.GemHunterBindings.HandleLevelLost();
+                var playerData = await CloudRetry.RunAsync(() => m_BindingsProvider.PlayerData.HandleLevelLost(operationId));
 
                 if (playerData == null)
                 {
@@ -264,13 +254,10 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             
                 PlayerDataUpdated?.Invoke(m_CloudPlayerData);
             }
-            catch (CloudCodeException ex)
-            {
-                Logger.LogError($"CloudCode error handling level lost: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                Logger.LogError($"Unexpected error handling level lost: {ex.Message}");
+                Logger.LogError($"Level lost not applied by the server: {ex.Message}");
+                await ResyncFromServerAsync();
             }
         }
         
@@ -281,7 +268,7 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             if (!isOnline ||
                 !IsPlayerInitializedInCloud ||
                 !AuthenticationService.Instance.IsSignedIn ||
-                m_BindingsProvider?.GemHunterBindings == null ||
+                m_BindingsProvider?.PlayerData == null ||
                 m_CloudPlayerData == null 
                 )
             {
@@ -296,7 +283,7 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             {
                 Logger.LogDemo("HandleConnectivityChanged about to call GetPlayerData...");
                 
-                var playerData = await m_BindingsProvider.GemHunterBindings.GetPlayerData();
+                var playerData = await m_BindingsProvider.PlayerData.GetPlayerData();
                 if (playerData != null)
                 {
                     m_CloudPlayerData = playerData;

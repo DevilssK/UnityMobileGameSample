@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <Configurations>Debug;Release</Configurations>
     </PropertyGroup>
@@ -10,10 +10,18 @@
       <InternalsVisibleTo Include="GemHunterUGSCloud.Tests" />
       <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="0.0.16" />
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.1" />
+      <ProjectReference Include="../../../SharedPackages/Server/DevilCorp.MobileFoundation.Server/DevilCorp.MobileFoundation.Server.csproj" />
     </ItemGroup>
 
     <PropertyGroup>
         <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="purchase_catalog.json" LogicalName="GemHunterUGSCloud.purchase_catalog.json" />
+    </ItemGroup>
+
+    <PropertyGroup>
     </PropertyGroup>
 
 <!--    <Target Name="Zip" AfterTargets="Publish">-->

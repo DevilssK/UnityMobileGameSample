@@ -20,6 +20,10 @@ namespace GemHunterUGS.Scripts.Store
     {
         [SerializeField]
         private StoreView m_StoreView;
+
+        [Tooltip("Real-money products are shown in the editor and development builds only, until the backend verifies Google/Apple receipts.")]
+        [SerializeField]
+        private bool m_ShowRealPurchasesInRelease = false;
         [SerializeField]
         private StoreClient m_StoreClient;
         [SerializeField]
@@ -41,6 +45,7 @@ namespace GemHunterUGS.Scripts.Store
             InitializeDependencies();
             
             m_StoreView.Initialize(m_PlayerDataManager.PlayerDataLocal, m_PlayerEconomyManager.PlayerEconomyDataLocal);
+            m_StoreView.SetRealMoneyProductsVisible(Application.isEditor || Debug.isDebugBuild || m_ShowRealPurchasesInRelease);
             m_StoreView.CloseStoreMenu();
             
             SetupEventHandlers();

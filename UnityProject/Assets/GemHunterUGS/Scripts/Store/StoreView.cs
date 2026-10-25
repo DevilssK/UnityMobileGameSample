@@ -176,6 +176,16 @@ namespace GemHunterUGS.Scripts.Store
             });
         }
         
+        /// <summary>Shows or hides every real-money product; the free coin pack is not one.</summary>
+        public void SetRealMoneyProductsVisible(bool visible)
+        {
+            var display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            foreach (var product in new[] { m_BundlePackItem, m_MegaPackItem, m_CoinPack100, m_CoinPack500, m_CoinPack1k, m_CoinPack5k, m_CoinPack10k })
+            {
+                product.style.display = display;
+            }
+        }
+
         public void OpenStoreMenu()
         {
             m_StoreMenu.style.display = DisplayStyle.Flex;

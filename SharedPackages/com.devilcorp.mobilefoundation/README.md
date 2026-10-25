@@ -46,6 +46,7 @@ Sans LevelPlay, l'assembly `DevilCorp.MobileFoundation.Ads.LevelPlay` n'est simp
 
 | Assembly | Dépend de | Moteur Unity | Contenu |
 | --- | --- | --- | --- |
+| `DevilCorp.MobileFoundation.Core` | — | non (`noEngineReferences`) | `TransientRetry` : relance bornée d'un appel backend idempotent refusé avec un code transitoire |
 | `DevilCorp.MobileFoundation.Purchases` | — | non (`noEngineReferences`) | `IPurchaseService`, `PurchaseCoordinator`, `IStoreGateway`, `IPurchaseFulfillment`, types de résultat |
 | `DevilCorp.MobileFoundation.Purchases.UnityIap` | Purchases, `Unity.Purchasing` | oui | `UnityIapStoreGateway`, `StoreProductDefinition` |
 | `DevilCorp.MobileFoundation.Ads` | — | non | `IRewardedAdsService`, `RewardedAdCoordinator`, `IRewardedAdGateway`, types de résultat |
@@ -160,7 +161,7 @@ Le package suppose un backend qui :
 
 `RetryLater` n'est pas une garantie illimitée : Google Play rembourse et révoque automatiquement un achat non confirmé (acknowledged) sous 3 jours ([cycle des achats Google Play](https://developer.android.com/google/play/billing/integrate)). Ne pas proposer d'achats réels tant que le backend ne sait pas les valider.
 
-État du backend de référence (Gem Hunter) : `Doc/backend-achats.md`. Il s'appuie encore sur Unity Economy, fermé aux nouveaux projets depuis le 8 septembre 2026 ; son remplacement est en cours d'arbitrage (`Doc/revue/2026-10-25-realignement-diagnostic.md`).
+Backend de référence : la bibliothèque Cloud Code `SharedPackages/Server/DevilCorp.MobileFoundation.Server` (portefeuille protégé sur Cloud Save, registre durable des achats, une écriture atomique par opération), utilisée par le module Gem Hunter. Garanties, codes d'erreur et vérifications : `Doc/backend-achats.md`. La vérification des reçus Google Play et App Store n'y est pas encore implémentée.
 
 ## Pubs récompensées
 

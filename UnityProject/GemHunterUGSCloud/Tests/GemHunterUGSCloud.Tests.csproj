@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Project\GemHunterUGSCloud.csproj" />
+        <Compile Include="../../../SharedPackages/Server/Tests/DevilCorp.MobileFoundation.Server.Tests/FakeProtectedStateStore.cs" Link="Support/FakeProtectedStateStore.cs" />
     </ItemGroup>
 
 </Project>

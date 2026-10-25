@@ -1,64 +1,59 @@
-# Backend — flux d'achat
+# Backend — portefeuille protégé et achats
 
-État au 2026-10-24, branche `feature/backend-p0-purchases`. Code : `UnityProject/GemHunterUGSCloud/Project/Purchases/` et `Services/StoreService.cs`.
+État au 2026-10-25, branche `feature/protected-wallet`. Spec : `Doc/specs/2026-10-25-portefeuille-protege-design.md` ; décision 0008.
 
-> **Mise à jour du 2026-10-25.** Ce flux repose sur Unity Economy, fermé aux nouveaux projets depuis le 2026-09-08 ; le projet UGS du template répond 403 sur Economy. Il décrit le code actuel, mais **ne peut pas fonctionner sur ce projet UGS**. Le remplaçant (validation Apple/Google dans Cloud Code, registre Cloud Save) est proposé dans `Doc/decisions/0008-remplacement-economy.md`, à valider. Les hypothèses 2 à 9 ci-dessous, propres à Economy, deviendront sans objet avec ce remplacement : ne pas les tester d'ici là.
+## Où est le code
 
-## Flux
+| Partie | Emplacement |
+| --- | --- |
+| Bibliothèque réutilisable (aucun type Gem Hunter) | `SharedPackages/Server/DevilCorp.MobileFoundation.Server/` : `State/` (stockage protected, transaction, initialisation sous délai de grâce), `Wallet/` (état et règles), `Purchases/` (registre, catalogue, `TransactionLogId`), `Config/` (Remote Config en cache) |
+| Module Gem Hunter | `UnityProject/GemHunterUGSCloud/Project/` : `Game/` (règles pures, état du jeu), `Services/` (fonctions Cloud Code), `purchase_catalog.json` (ressource incorporée) |
+| Réglages déployés | `Assets/UGSConfigs/game_tuning.rc` (`WALLET_DEFAULTS`, `AREA_ITEMS`) et `fetched_keys.rc` (`DAILY_REWARDS_CONFIG`, `AREA_COMPLETE_REWARDS`) |
+| Tests | `dotnet test SharedPackages/Server/Tests/DevilCorp.MobileFoundation.Server.Tests` et `dotnet test UnityProject/GemHunterUGSCloud/Tests` |
 
-1. Le client (Unity IAP) appelle `HandlePurchase(productId, receipt, transactionId)` avec l'enveloppe de reçu Unity IAP.
-2. `PurchaseRedeemer` refuse sans appel Economy : joueur non authentifié, `productId` vide, reçu illisible, store inconnu, store `fake` hors de l'environnement `development`.
-3. Google : `PurchaseData` = champ `json` du payload, `PurchaseDataSignature` = champ `signature`. Apple : `Receipt` = payload.
-4. **Economy redeem est le seul propriétaire de l'attribution** : les récompenses sont celles des `.ecr`. Le serveur ne crédite rien d'autre.
-5. Le statut Economy (en réponse ou dans le corps d'une erreur) est traduit en résultat.
+## Garanties et comment elles sont obtenues
 
-| Statut Economy | Résultat | Réponse au client |
-| --- | --- | --- |
-| `VALID` | `Delivered` | `PlayerEconomyData` → le client confirme l'achat |
-| `INVALID_ALREADY_REDEEMED` | `AlreadyDelivered` | `PlayerEconomyData` → le client confirme (reprise après réponse perdue) |
-| `VALID_NOT_REDEEMED` | `RetryLater` | erreur `PURCHASE_RETRY_LATER` → achat laissé en attente |
-| `INVALID_ANOTHER_PLAYER`, `INVALID_VERIFICATION_FAILED`, `INVALID_CONFIGURATION`, `INVALID_PRODUCT_ID_MISMATCH` | `Rejected` | erreur `PURCHASE_REJECTED` → ne pas réessayer |
-| 400, 404, 422 sans statut lisible | `Rejected` | erreur `PURCHASE_REJECTED` |
-| Autres codes (401, 403, 408, 409…) sans statut lisible | `RetryLater` | erreur `PURCHASE_RETRY_LATER` |
-| Store `fake` en `development` | `Simulated` | `PlayerEconomyData` inchangé, **rien n'est crédité** |
+| Garantie | Mécanisme |
+| --- | --- |
+| Le client ne peut pas modifier son solde | Données en classe protected ; le jeton joueur reçoit 401 en écriture (vérifié en `development`). Le serveur écrit avec `context.ServiceToken` et ne lit jamais la classe default |
+| Une opération = une écriture atomique | Batch protected (≤ 20 clés) avec le writeLock de chaque clé lue ; un conflit fait échouer tout le batch (vérifié) → relecture, 5 tentatives, puis `RETRY_LATER` |
+| Une transaction d'achat livrée une seule fois, sans limite de durée | Clé `PURCHASE_<sha256 de l'id de transaction>` écrite dans le même batch que le crédit, jamais évincée (≤ 1900 par joueur) |
+| Une action de jeu répétée ne s'applique qu'une fois | `operationId` du client gardé dans `WALLET.recentOperations` (50 derniers) |
+| La création ne peut écraser aucun état acquis | Écriture inconditionnelle réservée à l'initialisation, puis aucune mutation pendant 30 s (une fonction est tuée après 15 s). Cloud Save n'a pas de création conditionnelle (spike du 2026-10-25) |
+| Le gain d'un achat vient du serveur | `purchase_catalog.json` incorporé au module ; seul le faux store (développement) utilise l'id catalogue envoyé par le client |
 
-Logs : statut, `productId`, store, `CorrelationId`, `TransactionLogId` (empreinte SHA-256 tronquée, même algorithme que le package client). Jamais le reçu, le payload, la signature ni l'identifiant de transaction brut, qui est le purchase token sur Google Play avec IAP 5.
+## Flux d'achat
 
-## Inventaire
+1. Le client (Unity IAP) appelle `HandlePurchase(productId, receipt, transactionId)`.
+2. Reçu illisible → `PURCHASE_REJECTED`.
+3. Google Play ou App Store → `PURCHASE_RETRY_LATER` : la vérification par le store n'existe pas encore (spec suivante). Les builds hors développement masquent donc les achats réels.
+4. Faux store hors `development` → `PURCHASE_REJECTED` (décidé côté serveur, d'après `context.EnvironmentName`).
+5. Faux store en `development` : livraison par `PurchaseLedger.DeliverAsync`. Une transaction déjà enregistrée renvoie le portefeuille actuel (le client confirme).
+6. Toute erreur métier interne (délai de grâce, conflits, configuration) → `PURCHASE_RETRY_LATER` : un achat payé n'est jamais refusé pour une raison passagère.
 
-Le jeu stocke chaque objet empilable dans une instance « compteur » `{"amount": N}`. Un redeem ajoute des instances sans données d'instance : chacune compte pour une unité. Les lectures additionnent toutes les instances (lecture paginée) ; les écritures ciblent l'instance compteur. Pour le cœur infini, l'instance retenue est la plus récemment activée.
+Logs : `CorrelationId`, `TransactionLogId`, produit, store, résultat. Jamais le reçu, la signature ni l'id de transaction brut.
 
-## Pack gratuit
+## Codes d'erreur
 
-Verrou d'abord (item `FREE_COIN_PACK_CLAIM`, défini dans `Assets/UGSConfigs/FREE_COIN_PACK_CLAIM.eci`, à déployer, créé avec l'identifiant fixe `FREE_COIN_PACK_CLAIM` et refusé par Economy s'il existe), crédit ensuite. Une panne entre les deux fait perdre le pack (10 pièces) plutôt que de le doubler.
+`PURCHASE_REJECTED`, `PURCHASE_RETRY_LATER`, `INSUFFICIENT_FUNDS` (pièces ou étoiles), `RETRY_LATER` (conflits épuisés, délai de grâce, quotidien pas encore réclamable), `CONFIGURATION_ERROR` (clé Remote Config absente, schéma inconnu, registre plein, zone non terminée).
 
-## Changements de comportement
+## Vérifié en `development` (2026-10-25)
 
-- Récompenses exclusivement issues des `.ecr` : le Mega Pack donne aussi 5 `VERTICAL_ROCKET` ; plus de double crédit.
-- Cœur infini accordé par redeem (sans données d'instance) : considéré actif depuis la création de l'item.
-- `HandleGrantVideoAdReward` supprimée (décision 0001) : le client Gem Hunter actuel affiche un échec de récompense pub.
-- Le client actuel traite toute erreur de la même façon (pas de confirmation, pas de reprise) : les codes `PURCHASE_*` seront exploités lors de la réécriture du client.
+Module et réglages déployés par la fenêtre Deployment. Parcours joué depuis l'éditeur avec un nouveau joueur anonyme :
 
-## Hypothèses à vérifier en staging / sandbox
-
-| # | Hypothèse | Procédure |
-| --- | --- | --- |
-| 1 | ~~Format du reçu~~ **Vérifié** dans le code d'Unity IAP 5.4.4 (`UnifiedReceiptFormatter`, `OrderInfo`) : `{Store, TransactionID, Payload}`, Google `json`/`signature`, Apple reçu d'application, éditeur `fake` | — |
-| 2 | `VALID_NOT_REDEEMED` signifie « rien n'a été accordé » | Achat sandbox, rejouer le redeem, observer le statut et le portefeuille |
-| 3 | Deux redeems simultanés du même reçu : un seul `VALID` | Deux appels parallèles en staging avec le même reçu sandbox |
-| 4 | Economy renvoie `409` sur un `playersInventoryItemId` existant | Deux `HandleFreeCoinPackPurchase` parallèles en staging |
-| 5 | L'item `INFINITE_HEART` créé par redeem n'a pas de données d'instance | Achat sandbox du Bundle Pack, lecture de l'inventaire |
-| 6 | Economy accepte `localCost = 0` et `localCurrency = ""` | Premier achat sandbox Google et Apple |
-| 7 | Forme des instances créées par un redeem d'objets (une instance par unité, sans données) | Achat sandbox du Bundle Pack, lecture de l'inventaire ; si une instance porte N unités, adapter `SumInventory` |
-| 8 | iOS, reçu unifié IAP 4 : un second achat du même consommable est redeem sur la bonne transaction (pas `INVALID_ALREADY_REDEEMED`) | Deux achats sandbox successifs de `COIN_PACK_100` |
-| 9 | Pagination de l'inventaire (`after` = dernier `playersInventoryItemId`, `limit` ≤ 100) | Joueur de staging avec plus de 100 instances |
+| Étape | Résultat |
+| --- | --- |
+| Initialisation | 200 pièces, objets initiaux (tous listés), 8 cœurs, 5 étoiles ; second appel `new=False` |
+| Mutation dans les 30 s | `RETRY_LATER: state was just created` |
+| Achat faux store `COIN_PACK_100`, puis même transaction | 300 puis 300 (pas de second crédit) |
+| Pack gratuit ×2 | 310 une seule fois |
+| Victoire ×2 avec le même `operationId` | 6 étoiles (une seule application) |
+| Défaite | 7 cœurs |
+| Amélioration de zone | niveau 1, 290 pièces |
+| Quotidien ×2 | +10 pièces, puis `RETRY_LATER` (jour de 30 s dans la config de démo) |
+| Écriture protected avec le jeton client | HTTP 401 ; le portefeuille reste à 300 |
+| Configuration Remote Config absente (avant déploiement de `fetched_keys.rc`) | `CONFIGURATION_ERROR`, aucune écriture |
 
 ## Non vérifié
 
-Aucun achat sandbox Google Play ni App Store, aucun appareil réel, aucun déploiement Cloud Code. Les tests (`dotnet test UnityProject/GemHunterUGSCloud/Tests`) utilisent des doublures de l'API Economy : ils prouvent la logique du module, pas le comportement réel d'Economy ni des stores.
-
-## État du déploiement (constat du 2026-10-24)
-
-Le module Cloud Code déployé sur le projet UGS est encore celui du sample : un achat avec le faux store de l'éditeur, en environnement `production`, a été accepté et a crédité 100 pièces. Les corrections de ce document ne sont actives qu'après déploiement du module (non fait : aucun déploiement sans instruction explicite).
-
-Mise à jour du 2026-10-25 : le module corrigé a été déployé en `production` sur instruction explicite (d'après le code, le faux store y est donc refusé ; non revérifié par un appel réel). Le déploiement des ressources Economy a échoué (403).
+Aucun achat sandbox Google Play ni App Store, aucun appareil réel. La validation des reçus réels n'est pas implémentée. Le comportement des données Cloud Save à la suppression d'un compte UGS n'est pas établi. Rien n'est déployé en `production` depuis cette refonte : l'environnement `production` exécute encore le module du 2026-10-25 matin (Economy).

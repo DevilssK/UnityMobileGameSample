@@ -10,6 +10,7 @@ Contrat de travail complet : `Doc/CLAUDE_UNITY_MOBILE_FOUNDATION.md`. Le lire (a
 | `UnityProject/GemHunterUGSCloud/` | Backend Cloud Code C#, conservé dans le projet Unity (décision 0004) |
 | `SharedPackages/com.devilcorp.mobilefoundation/` | Package UPM commun, namespace `DevilCorp.MobileFoundation` : modules Purchases (décision 0006) et Ads (décision 0007). Guide d'intégration : son `README.md` |
 | `SharedPackages/Tests/` | Tests `dotnet test` des cœurs du package (hors Unity) |
+| `SharedPackages/Server/` | Bibliothèque Cloud Code réutilisable `DevilCorp.MobileFoundation.Server` (portefeuille protégé, registre d’achats, Cloud Save protected) et ses tests ; décision 0008, `Doc/backend-achats.md` |
 | `Doc/` | Brief, décisions (`Doc/decisions/`), guides |
 
 Éditeurs installés : Unity `6000.3.26f1`, `6000.6.5f1`, `6000.6.7f1` (`C:/Program Files/Unity/Hub/Editor/`). .NET SDK 10. Version cible : Unity `6000.6.7f1` (décision 0005, matrice dans `Doc/dependencies.md`).

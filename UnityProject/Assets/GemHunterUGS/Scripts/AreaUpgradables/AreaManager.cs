@@ -203,7 +203,7 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
                 return false;
             }
             
-            Logger.LogVerbose($"Updating area data. PlayerData: {playerData.DisplayName}, Areas: {playerData.GameAreasData?.Count ?? 0}");
+            Logger.LogVerbose($"Updating area data. Areas: {playerData.GameAreasData?.Count ?? 0}");
             return true;
         }
         

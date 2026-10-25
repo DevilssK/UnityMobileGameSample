@@ -1,6 +1,8 @@
 ﻿using System;
 using GemHunterUGS.Scripts.Core;
+using System.Threading.Tasks;
 using GemHunterUGS.Scripts.PlayerDataManagement;
+using GemHunterUGS.Scripts.PlayerEconomyManagement;
 using Unity.Services.CloudCode.GeneratedBindings.GemHunterUGSCloud.Models;
 using UnityEngine;
 using Logger = GemHunterUGS.Scripts.Utilities.Logger;
@@ -74,7 +76,7 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
                 return false;
             }
             
-            Logger.LogVerbose($"Updating area data. PlayerData: {playerData.DisplayName}, Areas: {playerData.GameAreasData?.Count ?? 0}");
+            Logger.LogVerbose($"Updating area data. Areas: {playerData.GameAreasData?.Count ?? 0}");
             return true;
         }
         
@@ -98,12 +100,14 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
             try
             {
                 int areaId = m_CurrentAreaDataCloud.AreaLevel;
-                var updatedPlayerData = await m_BindingsProvider.GemHunterBindings.HandleUnlock(areaId, itemId);
+                var operationId = Guid.NewGuid().ToString("N");
+                var updatedPlayerData = await CloudRetry.RunAsync(() => m_BindingsProvider.Areas.HandleUnlock(areaId, itemId, operationId));
                 m_PlayerDataManagerClient.HandleCloudDataUpdate(updatedPlayerData);
             }
             catch (Exception e)
             {
                 Logger.LogError($"Failed to handle area item unlock: {e.Message}");
+                await ResyncFromServerAsync();
             }
         }
 
@@ -119,13 +123,22 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
                 Logger.LogVerbose($"Handling upgradable for areaId {m_CurrentAreaDataCloud.AreaLevel} and itemId {itemId}");
                 
                 int areaId = m_CurrentAreaDataCloud.AreaLevel;
-                var updatedPlayerData = await m_BindingsProvider.GemHunterBindings.HandleUpgrade(areaId, itemId);
+                var operationId = Guid.NewGuid().ToString("N");
+                var updatedPlayerData = await CloudRetry.RunAsync(() => m_BindingsProvider.Areas.HandleUpgrade(areaId, itemId, operationId));
                 m_PlayerDataManagerClient.HandleCloudDataUpdate(updatedPlayerData);
             }
             catch (Exception e)
             {
                 Logger.LogError($"Failed to handle area item upgrade: {e.Message}");
+                await ResyncFromServerAsync();
             }
+        }
+
+        // Drops optimistic local stars, coins and levels when the server did not apply the action.
+        private async Task ResyncFromServerAsync()
+        {
+            await m_PlayerDataManagerClient.ResyncFromServerAsync();
+            GameSystemLocator.Get<PlayerEconomyManagerClient>()?.SyncEconomyData();
         }
         
         public void Dispose()

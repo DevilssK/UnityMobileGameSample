@@ -41,8 +41,9 @@ namespace GemHunterUGS.Scripts.Core
         [SerializeField] private RandomProfilePicturesSO m_RandomProfilePicturesSO;
         [SerializeField] private GameManagerUGS m_GameManagerUGSPrefab;
         
-        const string k_Environment = "production";
-        
+        [Tooltip("Leave empty: development in the editor and development builds, production otherwise.")]
+        [SerializeField] private string m_EnvironmentOverride = "";
+
         private async void Awake()
         {
             try
@@ -69,7 +70,9 @@ namespace GemHunterUGS.Scripts.Core
         {
             try
             {
-                var options = new InitializationOptions().SetEnvironmentName(k_Environment);
+                var environment = UgsEnvironment.Resolve(m_EnvironmentOverride, Application.isEditor, Debug.isDebugBuild);
+                Logger.Log($"UGS environment: {environment}");
+                var options = new InitializationOptions().SetEnvironmentName(environment);
                 await UnityServices.InitializeAsync(options).ContinueWith(task => onSuccess());
             }
             catch (Exception e)
