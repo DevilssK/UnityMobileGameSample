@@ -1,0 +1,57 @@
+{
+  "products": [
+    {
+      "catalogId": "COIN_PACK_100",
+      "type": "Consumable",
+      "storeIds": { "google": "coin_pack_100_play", "apple": "coin_pack_100_apple" },
+      "grants": [ { "id": "COIN", "amount": 100 } ]
+    },
+    {
+      "catalogId": "COIN_PACK_500",
+      "type": "Consumable",
+      "storeIds": { "google": "coin_pack_500_play", "apple": "coin_pack_500_apple" },
+      "grants": [ { "id": "COIN", "amount": 500 } ]
+    },
+    {
+      "catalogId": "COIN_PACK_1000",
+      "type": "Consumable",
+      "storeIds": { "google": "coin_pack_1000_play", "apple": "coin_pack_1000_apple" },
+      "grants": [ { "id": "COIN", "amount": 1000 } ]
+    },
+    {
+      "catalogId": "COIN_PACK_5000",
+      "type": "Consumable",
+      "storeIds": { "google": "coin_pack_5000_play", "apple": "coin_pack_5000_apple" },
+      "grants": [ { "id": "COIN", "amount": 5000 } ]
+    },
+    {
+      "catalogId": "COIN_PACK_10000",
+      "type": "Consumable",
+      "storeIds": { "google": "coin_pack_10000_play", "apple": "coin_pack_10000_apple" },
+      "grants": [ { "id": "COIN", "amount": 10000 } ]
+    },
+    {
+      "catalogId": "BUNDLE_PACK",
+      "type": "Consumable",
+      "storeIds": { "google": "bundle_pack_play", "apple": "bundle_pack_apple" },
+      "grants": [
+        { "id": "LARGE_BOMB", "amount": 2 },
+        { "id": "COIN", "amount": 50 },
+        { "id": "COLOR_BONUS", "amount": 3 },
+        { "id": "INFINITE_HEART", "amount": 1 }
+      ]
+    },
+    {
+      "catalogId": "MEGA_PACK",
+      "type": "Consumable",
+      "storeIds": { "google": "mega_pack_play", "apple": "mega_pack_apple" },
+      "grants": [
+        { "id": "VERTICAL_ROCKET", "amount": 5 },
+        { "id": "LARGE_BOMB", "amount": 4 },
+        { "id": "COIN", "amount": 500 },
+        { "id": "COLOR_BONUS", "amount": 6 },
+        { "id": "INFINITE_HEART", "amount": 1 }
+      ]
+    }
+  ]
+}

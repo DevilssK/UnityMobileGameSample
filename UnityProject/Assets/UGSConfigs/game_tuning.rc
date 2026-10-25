@@ -1,0 +1,33 @@
+{
+  "entries": {
+    "WALLET_DEFAULTS": {
+      "wallet": {
+        "currencies": {
+          "COIN": { "initial": 200 }
+        },
+        "items": {
+          "LARGE_BOMB": { "initial": 1 },
+          "SMALL_BOMB": { "initial": 3 },
+          "HORIZONTAL_ROCKET": { "initial": 1 },
+          "VERTICAL_ROCKET": { "initial": 1 },
+          "COLOR_BONUS": { "initial": 1 }
+        },
+        "timedEffects": {
+          "INFINITE_HEART": { "durationSeconds": 360 }
+        }
+      },
+      "player": { "hearts": 8, "stars": 5 },
+      "freeCoinPack": [ { "id": "COIN", "amount": 10 } ]
+    },
+    "AREA_ITEMS": {
+      "items": {
+        "1": { "name": "Shark", "coinCostPerLevel": 20, "maxLevel": 5 },
+        "2": { "name": "Seahorse", "coinCostPerLevel": 40, "maxLevel": 5 },
+        "3": { "name": "Submarine", "coinCostPerLevel": 60, "maxLevel": 5 },
+        "4": { "name": "Treasure", "coinCostPerLevel": 80, "maxLevel": 5 },
+        "5": { "name": "Turtle", "coinCostPerLevel": 100, "maxLevel": 5 }
+      }
+    }
+  },
+  "types": {}
+}

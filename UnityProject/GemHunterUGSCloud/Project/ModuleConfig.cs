@@ -1,30 +1,20 @@
-﻿using GemHunterUGSCloud.Services;
-using GemHunterUGSCloud.Purchases;
+﻿using GemHunterUGSCloud.Game;
 using Microsoft.Extensions.DependencyInjection;
 using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Core;
+
 namespace GemHunterUGSCloud
 {
 public class ModuleConfig : ICloudCodeSetup
 {
     public void Setup(ICloudCodeConfig config)
     {
-        config.Dependencies.AddSingleton(GameApiClient.Create());
+        var gameApiClient = GameApiClient.Create();
+        config.Dependencies.AddSingleton(gameApiClient);
 
-        config.Dependencies.AddSingleton<GiftHeartCooldownService>();
-        
-        config.Dependencies.AddSingleton<PlayerEconomyService>();
-        config.Dependencies.AddSingleton<PlayerDataService>();
-        
-        
-        config.Dependencies.AddSingleton<CommandBatchingService_AreaUpgradables>();
-        
-        config.Dependencies.AddSingleton<DailyRewardsStatusService>();
-        config.Dependencies.AddSingleton<DailyRewardsClaimService>();
-
-        
-        config.Dependencies.AddSingleton<PurchaseRedeemer>();
-        config.Dependencies.AddSingleton<StoreService>();
+        // Holds the Remote Config cache and the guarded transaction: one instance per worker.
+        config.Dependencies.AddSingleton(new GemHunterState(gameApiClient));
+        config.Dependencies.AddSingleton(GemHunterPurchaseCatalog.Load());
     }
 }
 }

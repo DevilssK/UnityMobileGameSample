@@ -17,6 +17,13 @@
         <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     </PropertyGroup>
 
+    <ItemGroup>
+        <EmbeddedResource Include="purchase_catalog.json" LogicalName="GemHunterUGSCloud.purchase_catalog.json" />
+    </ItemGroup>
+
+    <PropertyGroup>
+    </PropertyGroup>
+
 <!--    <Target Name="Zip" AfterTargets="Publish">-->
 <!--        <Message Importance="high" Text="Zipping output!!"/>-->
 <!--        <Exec Command="zip -r $(SolutionDir)ExampleModule.ccm $(PublishDir)" />-->
