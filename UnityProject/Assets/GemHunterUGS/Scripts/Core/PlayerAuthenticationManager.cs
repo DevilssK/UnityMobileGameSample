@@ -118,10 +118,9 @@ namespace GemHunterUGS.Scripts.Core
         private void LogPlayerInfo()
         {
             var playerId = AuthenticationService.Instance.PlayerId;
-            var accessToken = AuthenticationService.Instance.AccessToken;
+            // Never log the access token: it authenticates the player against every UGS service.
             Logger.LogDemo($"{k_KeyEmoji} Authentication successful!" +
-                $"\n{k_KeyEmoji} PlayerID: {playerId}" +
-                $"\n{k_KeyEmoji} Token: {accessToken}");
+                $"\n{k_KeyEmoji} PlayerID: {playerId}");
         }
         
         public void Dispose()

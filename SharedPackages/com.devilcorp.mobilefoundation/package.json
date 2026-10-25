@@ -1,8 +1,8 @@
 {
   "name": "com.devilcorp.mobilefoundation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "DevilCorp Mobile Foundation",
-  "description": "Shared non-gameplay foundation for DevilCorp mobile games: purchases (more modules to come).",
+  "description": "Shared non-gameplay foundation for DevilCorp mobile games: server-validated purchases (Unity IAP) and rewarded ads (optional LevelPlay adapter). See README.md.",
   "unity": "6000.6",
   "dependencies": {
     "com.unity.purchasing": "5.4.4"

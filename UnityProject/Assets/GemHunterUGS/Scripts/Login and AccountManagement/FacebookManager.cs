@@ -120,7 +120,7 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
                     var aToken = AccessToken.CurrentAccessToken;
                     
                     Logger.LogDemo($"Logged in. User ID: {aToken.UserId}");
-                    Logger.LogDemo($"Token: {aToken.TokenString}");
+                    // Never log the Facebook token itself: only its presence.
                     Logger.LogDemo($"Token Length: {aToken.TokenString?.Length}");
                     
                     var grantedPermissions = aToken.Permissions.ToList();

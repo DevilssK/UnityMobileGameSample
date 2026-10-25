@@ -20,7 +20,7 @@ Source de vérité : `UnityProject/Packages/manifest.json` et `packages-lock.jso
 | URP | 17.6.0 | Résolue par l'éditeur | 2026-10-24 | `manifest.json` |
 | Backend Cloud Code | net6.0, `Com.Unity.Services.CloudCode.Apis` 0.0.16 | Inchangé ; montée vers net8.0 à faire (runtime Cloud Code ≤ .NET 9) | 2026-10-24 | `.csproj`, doc Cloud Code |
 | Tests backend | net10.0, xUnit 2.9.2, NSubstitute 5.1.0 | Seul runtime .NET installé localement | 2026-10-24 | `Tests/GemHunterUGSCloud.Tests.csproj` |
-| Package commun `com.devilcorp.mobilefoundation` | 0.1.0 | Module Achats (décision 0006) ; dépend de Unity IAP 5.4.4 | 2026-10-24 | `SharedPackages/com.devilcorp.mobilefoundation/package.json` |
+| Package commun `com.devilcorp.mobilefoundation` | 0.2.0 | Modules Achats (décision 0006) et Pubs (décision 0007) ; dépend de Unity IAP 5.4.4 ; LevelPlay ≥ 9.0.0 optionnel (adaptateur compilé seulement s'il est installé) | 2026-10-25 | `SharedPackages/com.devilcorp.mobilefoundation/package.json`, `README.md` |
 | Tests du cœur Achats | net10.0, C# 9, xUnit 2.9.2 | Même code source que le package, limité au C# supporté par Unity | 2026-10-24 | `SharedPackages/Tests/MobileFoundation.Purchases.Tests` |
 
 À vérifier par un build : adaptateurs réseaux LevelPlay, Android minSdk/targetSdk exigés par Google Play, iOS minimum et version de Xcode.
