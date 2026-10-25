@@ -10,3 +10,6 @@ Thumbs.db
 # Backend build output
 **/bin/
 **/obj/
+
+# Superpowers plan workspaces
+.superpowers/

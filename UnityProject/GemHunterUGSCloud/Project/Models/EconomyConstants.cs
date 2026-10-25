@@ -22,6 +22,8 @@ public static class EconomyConstants
         public const string k_InfiniteHeart = "INFINITE_HEART";
         public const string k_HorizontalRocket = "HORIZONTAL_ROCKET";
         public const string k_VerticalRocket = "VERTICAL_ROCKET";
+        // Marker created once to lock the free coin pack claim (fixed playersInventoryItemId).
+        public const string k_FreeCoinPackClaim = "FREE_COIN_PACK_CLAIM";
     }
     
     public static class Currencies
