@@ -249,6 +249,21 @@ namespace GemHunterUGS.Scripts.PlayerHub
             m_DarkenOverlay.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        /// <summary>
+        /// Hides the entry points of features removed from the template (profile editing, friends, loot box).
+        /// Their UXML stays untouched so the sample layout keeps working.
+        /// </summary>
+        public void HideRemovedFeatures()
+        {
+            EditProfileButton.style.display = DisplayStyle.None;
+            FriendsNavButton.style.display = DisplayStyle.None;
+            ClaimLootBoxButton.style.display = DisplayStyle.None;
+            m_LootBoxLabel.style.display = DisplayStyle.None;
+            m_LootBoxCountdownLabel.style.display = DisplayStyle.None;
+            m_LootBoxIcon.style.display = DisplayStyle.None;
+            ProfileButton.SetEnabled(false);
+        }
+
         public void SetHubVisibility(bool isVisible)
         {
             m_Root.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
@@ -313,29 +328,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
             }
         }
 
-        public void ToggleFriendsMenu()
-        {
-            bool isMenuVisible = FriendsMenu.style.display == DisplayStyle.Flex;
-            if (isMenuVisible)
-            {
-                HideMenu(FriendsMenu);
-                SetDarkenOverlayVisibility(false);
-                ShowHubParent();
-                ShowTopBar();
-                SetNavButtonSize(FriendsNavButton, false);
-            }
-            else
-            {
-                HideAllMenus();
-                ShowMenu(FriendsMenu);
-                SetDarkenOverlayVisibility(true);
-                HideHubParent();
-                HideTopBar();
-                ResetAllNavButtonSizes();
-                SetNavButtonSize(FriendsNavButton, true);
-            }
-        }
-        
         public void ToggleAccountManagementMenu()
         {
             bool isMenuVisible = AccountMenu.style.display == DisplayStyle.Flex;
@@ -432,11 +424,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
         
         // Popups
 
-        public void ShowLootboxRewardsPopup()
-        {
-            // The timed lootbox is a simple implementation, no full-screen reward splash is required
-        }
-
         public void ShowPopUpTimed(string text, float time = 2f)
         {
             m_PopUp_Timed.style.display = DisplayStyle.Flex;
@@ -461,36 +448,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
             ShowPopUpTimed(errorMessage);
         }
         
-        public void SetLootBoxState(bool canClaim)
-        {
-            ClaimLootBoxButton.SetEnabled(canClaim);
-            
-            var disabledColor = new Color(0.5f, 0.5f, 0.5f, 1f); // Gray tint when disabled
-            
-            // Apply visual feedback - darken when inactive
-            ClaimLootBoxButton.style.unityBackgroundImageTintColor = canClaim
-                ? Color.white
-                : disabledColor;
-            
-            m_LootBoxIcon.style.opacity = canClaim ? 1f : 0.7f;
-            ClaimLootBoxButton.style.opacity = canClaim ? 1f : 0.7f;
-        }
-        
-        public void SetLootBoxLabelText(string labelText)
-        {
-            m_LootBoxLabel.text = labelText;
-        }
-        
-        public void SetCountdownVisibility(bool visible)
-        {
-            m_LootBoxCountdownLabel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-        }
-        
-        public void SetLootBoxCountdownText(string countdownText)
-        {
-            m_LootBoxCountdownLabel.text = countdownText;
-        }
-
         public void ShowInfinityHeartLabel(bool visible)
         {
             m_InfinityHeartLabel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;

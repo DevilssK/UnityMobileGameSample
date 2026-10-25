@@ -74,7 +74,7 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
                 return false;
             }
             
-            Logger.LogVerbose($"Updating area data. PlayerData: {playerData.DisplayName}, Areas: {playerData.GameAreasData?.Count ?? 0}");
+            Logger.LogVerbose($"Updating area data. Areas: {playerData.GameAreasData?.Count ?? 0}");
             return true;
         }
         
@@ -98,7 +98,7 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
             try
             {
                 int areaId = m_CurrentAreaDataCloud.AreaLevel;
-                var updatedPlayerData = await m_BindingsProvider.GemHunterBindings.HandleUnlock(areaId, itemId);
+                var updatedPlayerData = await m_BindingsProvider.Areas.HandleUnlock(areaId, itemId, Guid.NewGuid().ToString("N"));
                 m_PlayerDataManagerClient.HandleCloudDataUpdate(updatedPlayerData);
             }
             catch (Exception e)
@@ -119,7 +119,7 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
                 Logger.LogVerbose($"Handling upgradable for areaId {m_CurrentAreaDataCloud.AreaLevel} and itemId {itemId}");
                 
                 int areaId = m_CurrentAreaDataCloud.AreaLevel;
-                var updatedPlayerData = await m_BindingsProvider.GemHunterBindings.HandleUpgrade(areaId, itemId);
+                var updatedPlayerData = await m_BindingsProvider.Areas.HandleUpgrade(areaId, itemId, Guid.NewGuid().ToString("N"));
                 m_PlayerDataManagerClient.HandleCloudDataUpdate(updatedPlayerData);
             }
             catch (Exception e)

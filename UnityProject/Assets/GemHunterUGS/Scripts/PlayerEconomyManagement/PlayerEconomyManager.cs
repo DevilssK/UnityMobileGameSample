@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using GemHunterUGS.Scripts.Core;
-using GemHunterUGS.Scripts.LootBoxWithCooldown;
 using Unity.Services.CloudCode.GeneratedBindings.GemHunterUGSCloud.Models;
 using GemHunterUGS.Scripts.Utilities;
 using Logger = GemHunterUGS.Scripts.Utilities.Logger;
@@ -19,7 +18,6 @@ namespace GemHunterUGS.Scripts.PlayerEconomyManagement
         private readonly LocalStorageSystem m_LocalStorageSystem;
         
         private PlayerEconomyManagerClient m_PlayerEconomyManagerClient;
-        private LootBoxManagerClient m_LootBoxManagerClient;
         
         public event Action<PlayerEconomyData> LocalEconomyDataUpdated;
         public event Action<bool> InfiniteHeartStatusUpdated;

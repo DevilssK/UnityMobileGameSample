@@ -67,7 +67,7 @@ namespace GemHunterUGS.Scripts.PlayerEconomyManagement
             {
                 Logger.LogDemo("Syncing economy data...");
                 
-                var economyData = await m_BindingsProvider.GemHunterBindings.GetPlayerEconomyData();
+                var economyData = await m_BindingsProvider.PlayerData.GetPlayerEconomyData();
                 
                 if (economyData == null)
                 {

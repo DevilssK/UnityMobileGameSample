@@ -13,6 +13,7 @@ namespace Unity.Services.CloudCode.GeneratedBindings.GemHunterUGSCloud.Models
         public int MaxProgress;
         public int TotalUpgradableSlots;
         public int UnlockRequirement_Stars;
+        public bool CompletionRewardClaimed;
         public List<UpgradableAreaItem> UpgradableAreaItems;
 
         [Preserve]

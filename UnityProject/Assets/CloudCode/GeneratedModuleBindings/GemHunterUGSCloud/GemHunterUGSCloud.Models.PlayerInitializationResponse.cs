@@ -8,7 +8,6 @@ namespace Unity.Services.CloudCode.GeneratedBindings.GemHunterUGSCloud.Models
     {
         public PlayerData PlayerData;
         public PlayerEconomyData EconomyData;
-        public ProfilePicture ProfilePicture;
         public bool IsNewPlayer;
         public long InitializationTimestamp;
 

@@ -65,7 +65,7 @@ namespace GemHunterUGS.Scripts.DailyRewards
         {
             try
             {
-                var status = await m_BindingsProvider.GemHunterBindings.GetDailyRewardsStatus();
+                var status = await m_BindingsProvider.DailyRewardsStatus.GetDailyRewardsStatus();
                 FetchedDailyRewardsStatus?.Invoke(status);
             }
             catch (Exception e)
@@ -78,7 +78,7 @@ namespace GemHunterUGS.Scripts.DailyRewards
         {
             try 
             {
-                var newStatus = await m_BindingsProvider.GemHunterBindings.ClaimDailyReward();
+                var newStatus = await m_BindingsProvider.DailyRewardsClaim.ClaimDailyReward();
                 FetchedDailyRewardsStatus?.Invoke(newStatus);
                 m_PlayerEconomyManagerClient.SyncEconomyData();
             }

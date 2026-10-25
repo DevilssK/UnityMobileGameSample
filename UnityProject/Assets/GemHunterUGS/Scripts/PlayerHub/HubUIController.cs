@@ -3,9 +3,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using GemHunterUGS.Scripts.AreaUpgradables;
 using GemHunterUGS.Scripts.Core;
-using GemHunterUGS.Scripts.EditProfile;
 using GemHunterUGS.Scripts.Login_and_AccountManagement;
-using GemHunterUGS.Scripts.LootBoxWithCooldown;
 using GemHunterUGS.Scripts.PlayerDataManagement;
 using GemHunterUGS.Scripts.PlayerEconomyManagement;
 using GemHunterUGS.Scripts.Utilities;
@@ -24,10 +22,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
         
         // Menu specific controllers
         [SerializeField]
-        private EditProfileUIController m_EditProfileUIController;
-        [SerializeField]
-        private LootBoxUIController m_LootBoxUIController;
-        [SerializeField]
         private AccountManagementUIController m_AccountManagementUIController;
         [SerializeField]
         private AreaProgressMenuUIController m_AreaProgressUIController;
@@ -40,9 +34,7 @@ namespace GemHunterUGS.Scripts.PlayerHub
         private void OnEnable()
         {
             // In case these were disabled...
-            m_EditProfileUIController.gameObject.SetActive(true);
             m_AccountManagementUIController.gameObject.SetActive(true);
-            m_LootBoxUIController.gameObject.SetActive(true);
         }
         
         private void Start()
@@ -68,6 +60,7 @@ namespace GemHunterUGS.Scripts.PlayerHub
         private void InitializeHub()
         {
             m_HubView.Initialize(m_PlayerDataManager.PlayerDataLocal, m_PlayerEconomyManager.PlayerEconomyDataLocal);
+            m_HubView.HideRemovedFeatures();
             
             InitializeControllers();
             
@@ -86,7 +79,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
         private void InitializeControllers()
         {
             m_AccountManagementUIController.Initialize();
-            m_LootBoxUIController.Initialize(m_HubView);
             m_AreaProgressUIController.Initialize();
         }
         
@@ -101,14 +93,11 @@ namespace GemHunterUGS.Scripts.PlayerHub
             
             // Navigation events
             m_HubView.PlayLevelButton.clicked += StartGame;
-            m_HubView.ProfileButton.clicked += HandleShowEditProfile;
-            m_HubView.EditProfileButton.clicked += HandleShowEditProfile;
             
             // Bottom navigation buttons
             m_HubView.InfoNavButton.clicked += HandleToggleWelcomeInfo;
             m_HubView.CloseInfoPopupButton.clicked += HandleToggleWelcomeInfo;
             m_HubView.StoreNavButton.clicked += HandleToggleStoreMenu;
-            m_HubView.FriendsNavButton.clicked += HandleToggleFriendsMenu;
             m_HubView.AccountNavButton.clicked += HandleToggleAccountManagementMenu;
             m_HubView.HomeNavButton.clicked += ShowMainHub;
             
@@ -159,11 +148,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
             m_HubView.TogglePopUpWelcomeInfo();
         }
         
-        private void HandleToggleFriendsMenu()
-        {
-            m_HubView.ToggleFriendsMenu();
-        }
-        
         public void HandleToggleAccountManagementMenu()
         {
             m_HubView.ToggleAccountManagementMenu();
@@ -172,15 +156,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
         private void HandleUpdateProfilePicture(Sprite image)
         {
             m_HubView.UpdateProfilePicture(image);
-        }
-        
-        private void HandleShowEditProfile()
-        {
-            m_HubView.SetDarkenOverlayVisibility(true);
-            m_EditProfileUIController.OpenEditProfile();
-            m_HubView.HideAllMenus();
-            m_HubView.HideBottomNavBar();
-            HideMainHub();
         }
         
         private void UpdateOnlineStatus(bool isOnline)
@@ -249,8 +224,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
             
             // Navigation events
             m_HubView.PlayLevelButton.clicked -= StartGame;
-            m_HubView.ProfileButton.clicked -= HandleShowEditProfile;
-            m_HubView.EditProfileButton.clicked -= HandleShowEditProfile;
             m_HubView.SpecialOfferButton.clicked -= HandleToggleWelcomeInfo;
             
             // Bottom navigation
@@ -258,7 +231,6 @@ namespace GemHunterUGS.Scripts.PlayerHub
             m_HubView.InfoNavButton.clicked -= HandleToggleWelcomeInfo;
             m_HubView.CloseInfoPopupButton.clicked -= HandleToggleWelcomeInfo;
             m_HubView.HomeNavButton.clicked -= ShowMainHub;
-            m_HubView.FriendsNavButton.clicked -= HandleToggleFriendsMenu;
             m_HubView.AccountNavButton.clicked -= HandleToggleAccountManagementMenu;
             
             //Popup

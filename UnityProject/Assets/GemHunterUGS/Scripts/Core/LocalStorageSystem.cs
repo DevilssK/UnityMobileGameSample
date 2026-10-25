@@ -5,6 +5,7 @@ using System.Linq;
 using GemHunterUGS.Scripts.AreaUpgradables;
 using Newtonsoft.Json;
 using Unity.Services.CloudCode.GeneratedBindings.GemHunterUGSCloud.Models;
+using GemHunterUGS.Scripts.PlayerDataManagement;
 using UnityEngine;
 using GemHunterUGS.Scripts.Utilities;
 using Logger = GemHunterUGS.Scripts.Utilities.Logger;
@@ -38,7 +39,7 @@ namespace GemHunterUGS.Scripts.Core
             {
                 string jsonData = File.ReadAllText(path);
                 var playerData = JsonConvert.DeserializeObject<PlayerData>(jsonData);
-                Logger.LogDemo($"{k_SaveEmoji} Loaded player data for player: {playerData?.DisplayName}");
+                Logger.LogDemo($"{k_SaveEmoji} Loaded player data");
                 
                 return playerData;
             }
@@ -101,7 +102,7 @@ namespace GemHunterUGS.Scripts.Core
                 string path = Path.Combine(Application.persistentDataPath, k_PlayerDataFileName);
                 File.WriteAllText(path, jsonData);
                 
-                Logger.LogDemo($"{k_SaveEmoji} PlayerData saved locally for player: {playerData.DisplayName}");
+                Logger.LogDemo($"{k_SaveEmoji} PlayerData saved locally");
             }
             catch (Exception e)
             {

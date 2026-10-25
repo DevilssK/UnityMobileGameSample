@@ -167,7 +167,7 @@ namespace GemHunterUGS.Scripts.Store
         {
             try
             {
-                var economyData = await m_BindingsProvider.GemHunterBindings.HandleFreeCoinPackPurchase();
+                var economyData = await m_BindingsProvider.Store.HandleFreeCoinPackPurchase();
                 m_PlayerEconomyClient.HandleEconomyUpdate(economyData);
             }
             catch (Exception e)

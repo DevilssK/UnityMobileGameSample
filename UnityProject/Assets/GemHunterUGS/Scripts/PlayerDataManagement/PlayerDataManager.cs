@@ -42,7 +42,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
 
         public event Action<PlayerData> LocalPlayerDataUpdated;
         public event Action<Sprite> ProfilePictureUpdated;
-        public event Action NoGiftHeartsLeftPopup;
         public event Action CloudDataInitialized;
         public event Action DeleteCachedData;
         
@@ -62,7 +61,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
         public void Initialize(PlayerDataManagerClient playerDataManagerClient, PlayerEconomyManager playerEconomyManager)
         {
             m_PlayerDataManagerClient = playerDataManagerClient;
-            m_PlayerDataManagerClient.ProfilePictureFetched += OverwriteProfilePicture;
             m_PlayerDataManagerClient.PlayerDataUpdated += OverwriteLocalPlayerData;
             m_PlayerDataManagerClient.PlayerInitialized += OnPlayerInitializationComplete;
 
@@ -91,12 +89,15 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             
             if (ProfilePictureData == null)
             {
-                Logger.LogDemo("Profile picture null, will initialize in cloud");    
+                // Profiles are local and cosmetic: pick a random pre-made avatar once.
+                ProfilePictureData = new ProfilePicture
+                {
+                    ImageId = UnityEngine.Random.Range(0, RandomProfilePicturesSO.ProfilePictures.Count)
+                };
+                SaveProfilePictureLocal();
             }
-            else
-            {
-                SetProfileSprite();
-            }
+
+            SetProfileSprite();
             
             PlayerId = AuthenticationService.Instance.PlayerId;
             
@@ -131,9 +132,7 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
                 Logger.LogDemo($"PlayerId updated: {PlayerId}");
             }
             
-            PlayerDataLocal.DisplayName = cloudPlayerData.DisplayName;
             PlayerDataLocal.Hearts = cloudPlayerData.Hearts;
-            PlayerDataLocal.GiftHearts = cloudPlayerData.GiftHearts;
             PlayerDataLocal.Stars = cloudPlayerData.Stars;
             PlayerDataLocal.CurrentArea = cloudPlayerData.CurrentArea;
             PlayerDataLocal.GameAreasData = cloudPlayerData.GameAreasData;
@@ -163,10 +162,8 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             var initialArea = CreateFirstAreaData();
             var playerData = new PlayerData()
             {
-                DisplayName = "New Player",
                 Hearts = 1,
                 Stars = 1,
-                GiftHearts = 0,
                 CurrentArea = initialArea,
                 HasInfiniteHeartEffectActive = false,
                 GameAreasData = new List<AreaData>
@@ -238,24 +235,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             ProfilePictureUpdated?.Invoke(ProfileSprite);
         }
 
-        public void OverwriteProfilePicture(ProfilePicture profilePicture)
-        {
-            if (profilePicture == null)
-            {
-                Logger.LogWarning("Profile picture is null");
-                return;
-            }
-            ProfilePictureData = profilePicture;
-            SetProfileSprite();
-            SaveProfilePictureLocal();
-        }
-
-        public void HandleUpdateDisplayName(string displayName)
-        {
-            PlayerDataLocal.DisplayName = displayName;
-            LocalPlayerDataUpdated?.Invoke(PlayerDataLocal);
-        }
-
         public bool ModifyStars(int amount)
         {
             if (amount < 0 && PlayerDataLocal.Stars < Math.Abs(amount))
@@ -280,24 +259,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             }
     
             PlayerDataLocal.Hearts = newHeartCount;
-            SavePlayerDataLocal();
-            return true;
-        }
-
-        public bool ModifyGiftHearts(int amount)
-        {
-            if (amount < 0 && PlayerDataLocal.GiftHearts + amount < 0)
-            {
-                Logger.LogWarning($"{k_BrokenHeartEmoji} No gift hearts left");
-                NoGiftHeartsLeftPopup?.Invoke();
-                return false;
-            }
-            if (amount > 3)
-            {
-                Logger.LogWarning("Max gift hearts reached");
-                return false;
-            }
-            PlayerDataLocal.GiftHearts += amount;
             SavePlayerDataLocal();
             return true;
         }
@@ -350,7 +311,6 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             m_GameManagerUGS.GameplayLevelWon -= HandleLevelWon;
             m_GameManagerUGS.GameplayReplayLevelLost -= HandleReplayLostLevel;
             
-            m_PlayerDataManagerClient.ProfilePictureFetched -= OverwriteProfilePicture;
             m_PlayerDataManagerClient.PlayerDataUpdated -= OverwriteLocalPlayerData;
         }
     }
