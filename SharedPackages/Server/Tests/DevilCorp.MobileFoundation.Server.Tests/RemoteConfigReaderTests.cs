@@ -80,6 +80,19 @@ public class RemoteConfigReaderTests
     }
 
     [Fact]
+    public async Task GetAsync_ServiceFailure_ThrowsRetryLater()
+    {
+        _remoteConfig.AssignSettingsGetAsync(Arg.Any<IExecutionContext>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<List<string>>(), Arg.Any<List<string>>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ApiResponse<SettingsDeliveryResponse>>>(_ => throw new ApiException(ApiExceptionType.Network, "down", new ApiResponse<object>()));
+        var reader = new RemoteConfigReader(_api, _clock);
+
+        var error = await Assert.ThrowsAsync<GameOperationException>(() => reader.GetAsync(Context("dev"), "TUNING", CancellationToken.None));
+
+        Assert.Equal(ErrorCodes.RetryLater, error.Code);
+    }
+
+    [Fact]
     public async Task GetAsync_MissingKey_ThrowsConfigurationError()
     {
         Returns("dev", "TUNING", null);

@@ -57,15 +57,29 @@ public class CloudSaveProtectedStateStoreTests
     }
 
     [Fact]
-    public async Task TryWriteBatchAsync_OtherHttpError_Throws()
+    public async Task TryWriteBatchAsync_OtherHttpError_ThrowsRetryLater()
     {
         _cloudSave.SetProtectedItemBatchAsync(_context, "service-token", "project", "player", Arg.Any<SetItemBatchBody>(), Arg.Any<CancellationToken>())
             .Returns<Task<ApiResponse<SetItemBatchResponse>>>(_ => throw new ApiException(ApiExceptionType.Http, "boom",
                 Response<object>(HttpStatusCode.InternalServerError, null)));
         var store = new CloudSaveProtectedStateStore(_api);
 
-        await Assert.ThrowsAsync<ApiException>(() =>
+        var error = await Assert.ThrowsAsync<GameOperationException>(() =>
             store.TryWriteBatchAsync(_context, new[] { new ItemWrite("WALLET", new JObject(), null) }, CancellationToken.None));
+
+        Assert.Equal(ErrorCodes.RetryLater, error.Code);
+    }
+
+    [Fact]
+    public async Task ReadAsync_NetworkFailure_ThrowsRetryLater()
+    {
+        _cloudSave.GetProtectedItemsAsync(_context, "service-token", "project", "player", Arg.Any<List<string>>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ApiResponse<GetItemsResponse>>>(_ => throw new System.Net.Http.HttpRequestException("unreachable"));
+        var store = new CloudSaveProtectedStateStore(_api);
+
+        var error = await Assert.ThrowsAsync<GameOperationException>(() => store.ReadAsync(_context, new[] { "WALLET" }, CancellationToken.None));
+
+        Assert.Equal(ErrorCodes.RetryLater, error.Code);
     }
 
     [Fact]

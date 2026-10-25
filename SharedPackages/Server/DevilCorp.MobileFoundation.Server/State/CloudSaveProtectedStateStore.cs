@@ -29,8 +29,16 @@ public sealed class CloudSaveProtectedStateStore : IProtectedStateStore
 
     public async Task<IReadOnlyDictionary<string, StoredItem>> ReadAsync(IExecutionContext context, IReadOnlyCollection<string> keys, CancellationToken ct)
     {
-        var response = await _api.CloudSaveData.GetProtectedItemsAsync(
-            context, context.ServiceToken, context.ProjectId, context.PlayerId, keys.ToList(), null!, ct);
+        ApiResponse<GetItemsResponse> response;
+        try
+        {
+            response = await _api.CloudSaveData.GetProtectedItemsAsync(
+                context, context.ServiceToken, context.ProjectId, context.PlayerId, keys.ToList(), null!, ct);
+        }
+        catch (Exception e) when (ServiceFailure.IsTransient(e, ct))
+        {
+            throw ServiceFailure.RetryLater("Cloud Save", e);
+        }
 
         return response.Data.Results.ToDictionary(
             item => item.Key,
@@ -53,6 +61,10 @@ public sealed class CloudSaveProtectedStateStore : IProtectedStateStore
         catch (ApiException e) when (e.Response?.StatusCode == HttpStatusCode.Conflict)
         {
             return false;
+        }
+        catch (Exception e) when (ServiceFailure.IsTransient(e, ct))
+        {
+            throw ServiceFailure.RetryLater("Cloud Save", e);
         }
     }
 

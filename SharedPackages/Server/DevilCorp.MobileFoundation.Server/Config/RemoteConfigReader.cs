@@ -6,6 +6,8 @@ using DevilCorp.MobileFoundation.Server.State;
 using Newtonsoft.Json.Linq;
 using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Core;
+using Unity.Services.CloudCode.Shared;
+using Unity.Services.RemoteConfig.Model;
 
 namespace DevilCorp.MobileFoundation.Server.Config;
 
@@ -36,8 +38,16 @@ public sealed class RemoteConfigReader
             return cached.Value;
         }
 
-        var response = await _api.RemoteConfigSettings.AssignSettingsGetAsync(
-            context, context.AccessToken, context.ProjectId, context.EnvironmentId, null!, new List<string> { key }, null!, ct);
+        ApiResponse<SettingsDeliveryResponse> response;
+        try
+        {
+            response = await _api.RemoteConfigSettings.AssignSettingsGetAsync(
+                context, context.AccessToken, context.ProjectId, context.EnvironmentId, null!, new List<string> { key }, null!, ct);
+        }
+        catch (System.Exception e) when (ServiceFailure.IsTransient(e, ct))
+        {
+            throw ServiceFailure.RetryLater("Remote Config", e);
+        }
 
         var settings = response?.Data?.Configs?.Settings;
         if (settings == null || !settings.TryGetValue(key, out var raw) || raw == null)
