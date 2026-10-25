@@ -1,7 +1,7 @@
-using GemHunterUGSCloud.Purchases;
+using DevilCorp.MobileFoundation.Server.Purchases;
 using Xunit;
 
-namespace GemHunterUGSCloud.Tests.Purchases;
+namespace DevilCorp.MobileFoundation.Server.Tests;
 
 public class TransactionLogIdTests
 {

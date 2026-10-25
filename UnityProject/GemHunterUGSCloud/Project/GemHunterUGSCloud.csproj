@@ -10,6 +10,7 @@
       <InternalsVisibleTo Include="GemHunterUGSCloud.Tests" />
       <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="0.0.27" />
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.1" />
+      <ProjectReference Include="../../../SharedPackages/Server/DevilCorp.MobileFoundation.Server/DevilCorp.MobileFoundation.Server.csproj" />
     </ItemGroup>
 
     <PropertyGroup>
