@@ -10,7 +10,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="DevilCorp.MobileFoundation.Server.Tests" />
-        <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="0.0.27" />
+        <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="0.0.16" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
 
