@@ -41,9 +41,8 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
             m_PublicKeyUrl = fetchItemsResponse.PublicKeyUrl;
             m_Timestamp = fetchItemsResponse.Timestamp;
 
-            Logger.Log($"GameKit Authentication: signature => {m_Signature}");
+            // Signature and salt are authentication proofs: never log them.
             Logger.Log($"GameKit Authentication: publickeyurl => {m_PublicKeyUrl}");
-            Logger.Log($"GameKit Authentication: salt => {m_Salt}");
             Logger.Log($"GameKit Authentication: Timestamp => {m_Timestamp}");
         }
         else

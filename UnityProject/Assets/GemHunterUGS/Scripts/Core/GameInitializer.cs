@@ -2,6 +2,8 @@ using System;
 using System.Threading;
 using UnityEngine;
 using System.Threading.Tasks;
+using DevilCorp.MobileFoundation.Ads;
+using DevilCorp.MobileFoundation.Ads.LevelPlay;
 using DevilCorp.MobileFoundation.Purchases;
 using DevilCorp.MobileFoundation.Purchases.UnityIap;
 using GemHunterUGS.Scripts.Store;
@@ -122,6 +124,11 @@ namespace GemHunterUGS.Scripts.Core
             var purchaseService = CreatePurchaseService(bindingsProvider, economyManagerClient, authenticationManager);
             GameSystemLocator.Register<IPurchaseService>(purchaseService);
 
+            // Rewarded ads: a local, low-value reward (decision 0001). The service is registered at startup and
+            // starts loading once the player id is known.
+            var rewardedAdsService = CreateRewardedAdsService(authenticationManager);
+            GameSystemLocator.Register<IRewardedAdsService>(rewardedAdsService);
+
             // Areas
             var areaManager = new AreaManager(dataManager, economyManager);
             var areaManagerClient = new AreaManagerClient(dataManagerClient, bindingsProvider);
@@ -165,6 +172,26 @@ namespace GemHunterUGS.Scripts.Core
             authenticationManager.SignedInAfterTokenExpiry += () => RetryPendingPurchases(purchaseService);
             ConnectStore(storeGateway);
             return purchaseService;
+        }
+
+        private static IRewardedAdsService CreateRewardedAdsService(PlayerAuthenticationManager authenticationManager)
+        {
+            // Sample placeholders: replace with the game's LevelPlay app keys and rewarded ad unit ids.
+            var settings = new LevelPlayAdsSettings(
+                androidAppKey: "enterappkey",
+                iosAppKey: "enterappid",
+                androidRewardedAdUnitId: "xxxx",
+                iosRewardedAdUnitId: "xxx",
+                enableTestSuite: true);
+            var adGateway = new LevelPlayRewardedAdGateway(settings, Logger.Log);
+            var rewardedAdsService = new RewardedAdCoordinator(adGateway, log: Logger.Log);
+
+            authenticationManager.SignedIn += () =>
+            {
+                adGateway.Initialize(AuthenticationService.Instance.PlayerId);
+                rewardedAdsService.Start();
+            };
+            return rewardedAdsService;
         }
 
         private static async void ConnectStore(UnityIapStoreGateway storeGateway)

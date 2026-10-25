@@ -261,7 +261,6 @@ namespace GemHunterUGS.Scripts.Login_and_AccountManagement
             Logger.LogDemo($"Authentication Service State: {(AuthenticationService.Instance.IsSignedIn ? "Signed in" : "Signed out")}");
             Logger.LogDemo($"Is Anonymous: {m_PlayerDataManager.IsPlayerAnonymous()}");
             Logger.LogDemo($"PlayerId: {AuthenticationService.Instance.PlayerId}");
-            Logger.LogDemo($"PlayerToken: {PlayerAccountService.Instance.AccessToken}");
             Logger.LogDemo(GetPlayerInfoText());
         }
         
