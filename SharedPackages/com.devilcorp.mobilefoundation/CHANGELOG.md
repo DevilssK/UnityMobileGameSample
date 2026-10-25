@@ -4,6 +4,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), versionnement
 
 ## [Non publié]
 
+### Ajouté
+- Assembly **Core** (`DevilCorp.MobileFoundation.Core`, sans moteur) : `TransientRetry`, relance bornée d'un appel backend refusé pour une raison passagère (par exemple `RETRY_LATER` pendant le délai de grâce du portefeuille protégé). Réservée aux appels idempotents côté serveur, qui portent le même identifiant d'opération à chaque tentative.
+
 ### Sécurité
 - Les identifiants de transaction ne sont plus journalisés : avec IAP 5, sur Google Play, c'est le purchase token. `StorePurchase.ToString()` et `UnityIapStoreGateway` affichent `TransactionLogId` (12 premiers caractères hexadécimaux du SHA-256), exposé aussi par `StorePurchase.LogId`.
 

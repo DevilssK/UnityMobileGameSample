@@ -46,6 +46,7 @@ Sans LevelPlay, l'assembly `DevilCorp.MobileFoundation.Ads.LevelPlay` n'est simp
 
 | Assembly | Dépend de | Moteur Unity | Contenu |
 | --- | --- | --- | --- |
+| `DevilCorp.MobileFoundation.Core` | — | non (`noEngineReferences`) | `TransientRetry` : relance bornée d'un appel backend idempotent refusé avec un code transitoire |
 | `DevilCorp.MobileFoundation.Purchases` | — | non (`noEngineReferences`) | `IPurchaseService`, `PurchaseCoordinator`, `IStoreGateway`, `IPurchaseFulfillment`, types de résultat |
 | `DevilCorp.MobileFoundation.Purchases.UnityIap` | Purchases, `Unity.Purchasing` | oui | `UnityIapStoreGateway`, `StoreProductDefinition` |
 | `DevilCorp.MobileFoundation.Ads` | — | non | `IRewardedAdsService`, `RewardedAdCoordinator`, `IRewardedAdGateway`, types de résultat |
