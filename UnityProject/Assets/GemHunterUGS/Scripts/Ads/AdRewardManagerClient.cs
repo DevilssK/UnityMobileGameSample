@@ -90,10 +90,9 @@ public class AdRewardManagerClient : MonoBehaviour
         // Only if you want to use test suite, launched in OnSDKInitialized
         LevelPlay.SetMetaData("is_test_suite", "enable");
 
-        // Initialize SDK - this will trigger OnSDKInitialized callback
-        // Note: Rewarded ads require legacy format specification during init
-        com.unity3d.mediation.LevelPlayAdFormat[] legacyAdFormats = new[] { com.unity3d.mediation.LevelPlayAdFormat.REWARDED };
-        LevelPlay.Init(appKey, userId, legacyAdFormats);
+        // Initialize SDK - this will trigger OnSDKInitialized callback.
+        // LevelPlay 9 no longer takes a legacy ad format list: ad units are created after init.
+        LevelPlay.Init(appKey, userId);
 
         LevelPlay.SetPauseGame(true);
     }
@@ -398,9 +397,9 @@ public class AdRewardManagerClient : MonoBehaviour
         Logger.Log("Rewarded ad displayed");
     }
 
-    private void HandleAdFailedToDisplay(LevelPlayAdDisplayInfoError error)
+    private void HandleAdFailedToDisplay(LevelPlayAdInfo adInfo, LevelPlayAdError error)
     {
-        Logger.LogError($"Rewarded ad failed to display: {error}");
+        Logger.LogError($"Rewarded ad failed to display: {error.ErrorMessage} (Code: {error.ErrorCode})");
         AdSuccessfullyCompleted?.Invoke(false);
     }
 

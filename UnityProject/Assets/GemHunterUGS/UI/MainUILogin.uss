@@ -161,7 +161,6 @@
     border-right-color: rgba(0, 0, 0, 0);
     border-top-color: rgba(0, 0, 0, 0);
     border-bottom-color: rgba(0, 0, 0, 0);
-    -unity-font: url("project://database/Assets/GemHunterMatch/UI/UI%20Toolkit/UnityThemes/UnityDefaultRuntimeTheme.tss?fileID=2230732570650464555&guid=c215640d0f618c148bcebd2a26070cdd&type=3#NotInter-Regular");
     -unity-font-style: normal;
     color: rgb(230, 230, 230);
     flex-grow: 0;
@@ -210,7 +209,6 @@
     border-right-color: rgba(0, 0, 0, 0);
     border-top-color: rgba(0, 0, 0, 0);
     border-bottom-color: rgba(0, 0, 0, 0);
-    -unity-font: url("project://database/Assets/GemHunterMatch/UI/UI%20Toolkit/UnityThemes/UnityDefaultRuntimeTheme.tss?fileID=2230732570650464555&guid=c215640d0f618c148bcebd2a26070cdd&type=3#NotInter-Regular");
     -unity-font-style: normal;
     color: rgb(230, 230, 230);
     flex-grow: 0;
@@ -262,7 +260,6 @@
     border-right-color: rgba(0, 0, 0, 0);
     border-top-color: rgba(0, 0, 0, 0);
     border-bottom-color: rgba(0, 0, 0, 0);
-    -unity-font: url("project://database/Assets/GemHunterMatch/UI/UI%20Toolkit/UnityThemes/UnityDefaultRuntimeTheme.tss?fileID=2230732570650464555&guid=c215640d0f618c148bcebd2a26070cdd&type=3#NotInter-Regular");
     -unity-font-style: normal;
     color: rgb(230, 230, 230);
     flex-grow: 0;
