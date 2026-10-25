@@ -16,20 +16,12 @@ public class ModuleConfig : ICloudCodeSetup
         config.Dependencies.AddSingleton<PlayerEconomyService>();
         config.Dependencies.AddSingleton<PlayerDataService>();
         
-        config.Dependencies.AddSingleton<LootBoxCooldownService>();
         
-        // Needs PlayerEconomyService
-        config.Dependencies.AddSingleton<LootBoxService>();
-        // Needs PlayerEconomyService
         config.Dependencies.AddSingleton<CommandBatchingService_AreaUpgradables>();
         
         config.Dependencies.AddSingleton<DailyRewardsStatusService>();
-        config.Dependencies.AddSingleton<DailyRewardsMonthlyResetService>();
         config.Dependencies.AddSingleton<DailyRewardsClaimService>();
 
-        config.Dependencies.AddSingleton<AllPlayersService>();
-        config.Dependencies.AddSingleton<FriendsService>();
-        config.Dependencies.AddSingleton<PlayerGiftsService>();
         
         config.Dependencies.AddSingleton<PurchaseRedeemer>();
         config.Dependencies.AddSingleton<StoreService>();
