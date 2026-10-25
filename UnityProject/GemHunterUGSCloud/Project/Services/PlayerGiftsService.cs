@@ -341,9 +341,9 @@ public class PlayerGiftsService
             await m_GameApiClient.CloudSaveData.DeleteProtectedItemAsync(
                 context,
                 context.ServiceToken,
-                k_PlayerGiftKey,
                 context.ProjectId,
-                context.PlayerId!
+                context.PlayerId!,
+                k_PlayerGiftKey
             );
             
             m_Logger.LogInformation("Deleted gift data after processing for player {PlayerId}", context.PlayerId);

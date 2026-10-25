@@ -51,7 +51,7 @@ internal static class PurchaseTestDoubles
         Response(HttpStatusCode.OK, new PlayerPurchaseGoogleplaystoreResponse(
                 new PlayerPurchaseGoogleplaystoreResponseVerification(
                     status, new PlayerPurchaseGoogleplaystoreResponseVerificationStore("")),
-                EmptyRewards()));
+                new PlayerPurchaseGoogleplaystoreResponseRewards(new List<CurrencyExchangeItem>(), new List<InventoryExchangeItem>())));
 
     public static ApiResponse<PlayerPurchaseAppleappstoreResponse> AppleResponse(
         PlayerPurchaseAppleappstoreResponseVerification.StatusEnum status) =>

@@ -83,9 +83,9 @@ namespace GemHunterUGSCloud.Services
                 await m_GameApiClient.CloudSaveData.DeleteItemAsync(
                     context,
                     context.AccessToken,
-                    DailyRewardsStatusService.k_PlayerStatusKey,
                     context.ProjectId,
-                    context.PlayerId);
+                    context.PlayerId,
+                    DailyRewardsStatusService.k_PlayerStatusKey);
             }
             catch (Exception ex)
             {

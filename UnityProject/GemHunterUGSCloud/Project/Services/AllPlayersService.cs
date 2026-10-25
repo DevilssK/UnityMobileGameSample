@@ -131,7 +131,7 @@ public class AllPlayersService
     {
         return new Player
         {
-            PlayerId = result.Id,
+            PlayerId = result.Id?.GetString(),
             DisplayName = GetDisplayName(result.Data),
             PlayerPortrait = GetProfilePicture(result.Data)
         };
