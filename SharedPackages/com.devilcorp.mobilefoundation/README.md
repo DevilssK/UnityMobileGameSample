@@ -38,6 +38,8 @@ Dépendances :
 | `com.unity.purchasing` (Unity IAP) | 5.4.4 | oui, installée automatiquement par le package |
 | `com.unity.services.levelplay` | ≥ 9.0.0 (testé 9.5.1) | non : à ajouter soi-même pour utiliser l'adaptateur pub |
 
+**LevelPlay**, c'est quoi ? C'est le SDK de **médiation publicitaire** de Unity (anciennement ironSource), distribué dans le package Unity « Ads Mediation » (`com.unity.services.levelplay`). Une médiation interroge plusieurs régies (Unity Ads, AdMob, Meta…) et affiche la pub la mieux payée. Le jeu n'intègre donc qu'un SDK au lieu d'un par régie. Les régies elles-mêmes s'ajoutent par le LevelPlay Network Manager (menu Ads Mediation de l'éditeur). L'adaptateur garde le nom LevelPlay parce que c'est le nom du SDK qu'il faudra mettre à jour.
+
 Sans LevelPlay, l'assembly `DevilCorp.MobileFoundation.Ads.LevelPlay` n'est simplement pas compilée (`versionDefines` → `DEVILCORP_LEVELPLAY`). Le cœur `Ads` reste utilisable avec un autre fournisseur.
 
 ## Assemblies
