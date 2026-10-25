@@ -148,6 +148,21 @@ Faits utiles :
 3. Batch protected avec une clé en conflit : l'échec de tout le batch est à confirmer pour la classe protected.
 4. Écrire une donnée protected avec un jeton client : le refus est attendu.
 
+**Résultats du spike (2026-10-25, environnement `development`, Cloud Code Apis 0.0.16)** [O] :
+
+| Essai | Résultat |
+| --- | --- |
+| Écriture protected avec le jeton du joueur (`context.AccessToken`, celui que détient le client) | **401 Unauthorized** sur toutes les écritures : le client ne peut pas écrire en protected. Les écritures serveur exigent `context.ServiceToken` |
+| (a) clé absente, writeLock `""` | Acceptée, la clé est créée |
+| (a) clé **existante**, writeLock `""` | Acceptée, la clé est **écrasée** : `""` équivaut à « sans writeLock » |
+| (a) clé absente, writeLock arbitraire `"0"` | 400 Bad Request |
+| (b) clé existante, sans writeLock | Acceptée, écrasée (conforme à la doc) |
+| (c) batch protected de 2 clés, dont une avec un writeLock périmé | **409 Conflict** ; relecture : les **deux** clés gardent leur valeur et leur writeLock (batch atomique) |
+| (c2) batch « clé existante avec bon writeLock + clé nouvelle sans writeLock » | Accepté |
+| (d) `Item.Value` | `Newtonsoft.Json.Linq.JObject` ; `Created` / `Modified` à la seconde |
+
+Conclusion : **aucune création conditionnelle**. Le délai de grâce reste nécessaire (tâche 5 du plan). L'atomicité du batch protected est établie.
+
 Alternatives :
 - **P2** — attendre Unity 6.7 LTS et Stateful Cloud Code (appels sérialisés par joueur). Aucun portefeuille utilisable d'ici là.
 - **P3** — adopter Unity 6.7 bêta maintenant. Déconseillé : bêta, et garanties de commit et de rollback non documentées.
