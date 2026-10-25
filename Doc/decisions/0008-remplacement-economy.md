@@ -1,27 +1,28 @@
-# 0008 — Remplacement d'Unity Economy : registre d'achats sur Cloud Save, pas de portefeuille serveur
+# 0008 — Remplacement d'Unity Economy : validation serveur des achats et portefeuille protégé optionnel
 
-Date : 2026-10-25 · Statut : **proposée — à valider** (arbitrages A1, A2, A3 et A7 de `Doc/revue/2026-10-25-realignement-diagnostic.md`)
+Date : 2026-10-25 · Statut : **périmètre accepté (A1-B, 2026-10-25) ; persistance du portefeuille à valider** (voir `Doc/revue/2026-10-25-realignement-diagnostic.md`)
 
 ## Problème
-Unity Economy n'accepte plus de nouveaux projets depuis le 2026-09-08. Le projet UGS du template répond `403` sur Economy. Or le propriétaire unique de l'attribution des achats était Economy redeem (décision 0001), et toute la méta de Gem Hunter (pièces, objets, coffres, zones) reposait sur Economy.
+Unity Economy n'accepte plus de nouveaux projets depuis le 2026-09-08 ; le projet UGS du template répond `403` sur Economy. Or Economy redeem était le propriétaire unique de l'attribution des achats (décision 0001), et toute la méta de Gem Hunter reposait sur Economy.
 
-## Décision proposée
-- Le socle V1 ne comporte **pas de portefeuille protégé** (confirmation de la décision 0001).
-- Le serveur (Cloud Code) valide les achats et devient le seul propriétaire de l'attribution :
+## Décision (acceptée)
+- Les futurs jeux, y compris solo, peuvent vendre des biens qui doivent être protégés. Le socle fournit donc un **module optionnel de portefeuille protégé géré par le serveur** : soldes, objets et droits, crédits **et** dépenses décidés par Cloud Code. Le client ne peut qu'en lire l'état. C'est l'architecture recommandée par Unity pour les nouveaux projets qui ont besoin d'une économie : Cloud Code, Cloud Save et Remote Config, plus Unity IAP pour les achats réels.
+- Le serveur valide les achats et devient le seul propriétaire de l'attribution :
   - Apple : JWS StoreKit 2 ;
   - Google : API Google Play Developer, avec la clé du compte de service dans Secret Manager.
-- Chaque livraison est enregistrée dans Cloud Save (classe protected) sous une clé par transaction. La valeur est déterministe, et le droit permanent est écrit dans le même batch.
-- Le produit attribué est déduit de l'id produit du reçu vérifié, à l'aide d'un catalogue unique versionné dans le dépôt, partagé par le client et le module.
-- Consommables : livrés une fois par transaction vers l'état local du jeu, sans valeur protégée.
-- Gem Hunter devient un hôte de gameplay local. Ses fonctions méta serveur sortent du template, et le package `com.unity.services.economy` est retiré.
+- Une transaction valide donne une seule attribution, avec une déduplication durable et sans éviction.
+- Le module est optionnel : un jeu sans biens protégés ne l'initialise pas.
+- Cette décision remplace dans 0001 « portefeuille protégé plus tard » et « propriétaire unique = Economy redeem ».
+
+## À valider
+- **Stockage du portefeuille.** Cloud Save seul n'offre aucune création conditionnelle, si bien qu'une première écriture peut écraser un état déjà acquis. Stateful Cloud Code sérialise les appels par joueur, mais exige Unity 6.7, aujourd'hui en bêta. Le choix intervient après le spike défini dans le diagnostic (A1-B, persistance).
+- **Fonctions de Gem Hunter conservées** pour démontrer le portefeuille. Celles que le brief exclut (§2 : loot box, système social) restent retirées.
+- A2 (registre), A3 (catalogue), A4 (transition), A5 (versions), A6 (environnements), A7 (identité).
 
 ## Alternatives écartées
-- Document Cloud Save unique par joueur, mis à jour par writeLock : la création initiale n'est pas sûre (aucune écriture conditionnelle de création), et l'idempotence est bornée par la taille du document.
-- Stateful Cloud Code : exige Unity 6.7 (bêta), Cloud Code 3.0 et .NET 10 ; commit et rollback non documentés.
-- Reconstruire toute l'économie de Gem Hunter côté serveur : fonctions exclues par le brief (§2).
-- Remote Catalog comme source des gains : son schéma ne porte pas de gain, et sa lecture par un serveur n'est pas documentée.
+- Pas de portefeuille serveur (A1-R) : insuffisant pour des biens vendus qui doivent rester protégés.
+- Reconstruire toute l'économie de Gem Hunter côté serveur (spec du 2026-10-25) : elle couvre des fonctions exclues par le brief et contient des garanties non établies.
 
 ## Conséquences
-- Remplace dans 0001 la phrase « propriétaire unique de l'attribution = Economy redeem ».
-- La spec `Doc/specs/2026-10-25-economie-cloud-save-design.md` est supprimée, au profit d'une spec « validation et registre des achats ».
-- Un futur jeu qui vendrait une monnaie protégée devra prendre une nouvelle décision, avec la preuve d'une création initiale sûre ou une migration vers Stateful Cloud Code.
+- La spec `Doc/specs/2026-10-25-economie-cloud-save-design.md` sera remplacée par une spec « portefeuille protégé et validation des achats ».
+- Les tests de concurrence de la section 7 de la demande de revue redeviennent obligatoires : création initiale, dépenses concurrentes, réponse perdue, rejeu au-delà de 200 transactions.

@@ -1,6 +1,6 @@
 # Réalignement du socle avec Unity Cloud — diagnostic et arbitrages
 
-Date : 2026-10-25 · Statut : **diagnostic établi ; arbitrages A1 à A7 à valider**
+Date : 2026-10-25 · Statut : **diagnostic établi ; A1 tranché en faveur de A1-B (portefeuille protégé optionnel) le 2026-10-25 ; persistance et A2 à A7 à valider**
 Demande d'origine : `Doc/Claude-Revue-alignement-Unity-Cloud-2026-10-25.md`.
 
 Niveaux de preuve utilisés : **[D]** fait documenté par une source officielle, **[O]** observation du dépôt ou de l'outillage local, **[I]** inférence, **[NV]** non vérifié.
@@ -107,6 +107,8 @@ Observation [O] : le gameplay du match-3 (`GemHunterMatch/Scripts/UI/UIHandler.c
 
 ### A1 — Périmètre de l'économie serveur (structurant)
 
+> **Décision du propriétaire (2026-10-25) : A1-B.** « Les futurs jeux ont besoin d'une architecture robuste et sécurisée ; même un jeu solo peut comprendre des achats qui doivent être solides et protégés. » La recommandation A1-R ci-dessous est conservée pour la traçabilité. Les scénarios de concurrence du §8 marqués « sans objet en A1-R » redeviennent obligatoires.
+
 - **Recommandé : A1-R.** Confirmer la décision 0001 : pas de portefeuille protégé dans le socle V1.
   - Le serveur valide les achats et tient le registre.
   - Achats permanents : validés et enregistrés côté serveur.
@@ -120,6 +122,35 @@ Observation [O] : le gameplay du match-3 (`GemHunterMatch/Scripts/UI/UIHandler.c
 - **A1-B.** Module optionnel « portefeuille protégé » minimal (pièces et items) sur Cloud Save. Il faut d'abord prouver une création initiale sûre ; aucun mécanisme documenté n'existe aujourd'hui (§6). Coût : règles, retries, migrations, tests de concurrence en `development`.
 - **A1-C.** Spec actuelle (tout Gem Hunter côté serveur). Déconseillé : elle reconstruit des fonctions exclues par le brief et garde la course à la création.
 - Travaux dépendants : suppression ou réécriture de la spec économie, retrait d'Economy, refonte du hub, sauvegarde locale.
+
+### A1-B — Persistance du portefeuille (à valider)
+
+Le seul point dur est la **création initiale**. Cloud Save ne documente aucune écriture « créer seulement si absent ». Une création sans writeLock peut donc écraser un portefeuille déjà modifié par un autre appel qui a vu l'élément absent au même moment.
+
+Faits utiles :
+- une fonction de module C# est tuée après **15 s** ([limites Cloud Code](https://docs.unity.com/en-us/cloud-code/modules/reference/limits)) [D] ;
+- Triggers relance une exécution Cloud Code après un timeout, si bien qu'une initialisation peut s'exécuter deux fois ([failure handling](https://docs.unity.com/en-us/triggers/failure-handling)) [D] ;
+- l'événement `com.unity.services.player-auth.signed-up.v1` existe [D].
+
+**Recommandé : P1 — Cloud Save maintenant, création protégée par un délai de grâce, puis Stateful Cloud Code à la migration Unity 6.7 LTS.**
+- Toute écriture inconditionnelle (sans writeLock) est réservée à l'initialisation. Elle ne se fait que si la lecture qui la précède, dans la même exécution, a trouvé l'élément absent. Le contenu est l'état initial du catalogue, avec `createdAtUnixMs` égal à l'heure de cette lecture.
+- Toute autre mutation est conditionnelle (writeLock ou batch avec writeLock par clé). Elle est refusée (`RETRY_LATER`) tant que `now < createdAtUnixMs + 30 s`.
+- Raisonnement : une initialisation fondée sur une lecture périmée ne peut atterrir que pendant la durée de vie de son exécution, soit 15 s plus le transit réseau. Elle ne peut donc écraser qu'une autre initialisation, jamais une mutation.
+- Hypothèses à prouver en `development` :
+  - écart d'horloge entre workers inférieur à la marge ;
+  - aucune écriture ne reste en vol après l'arrêt de la fonction au-delà de la marge.
+- Le client appelle l'initialisation juste après la connexion, pour que le délai s'écoule pendant les menus.
+- Les règles du portefeuille sont pures et le stockage passe derrière une interface. Un adaptateur Stateful Cloud Code pourra remplacer l'adaptateur Cloud Save sans réécrire les règles.
+
+**Spike à mener dès que l'environnement `development` existe** (il peut simplifier P1) :
+1. Écrire avec un writeLock sur une clé absente. Si le service accepte une valeur réservée (`""`, par exemple) comme « doit être absent », la création conditionnelle existe et le délai de grâce devient inutile.
+2. Écrire sans writeLock sur une clé existante : l'écrasement est documenté, à confirmer.
+3. Batch protected avec une clé en conflit : l'échec de tout le batch est à confirmer pour la classe protected.
+4. Écrire une donnée protected avec un jeton client : le refus est attendu.
+
+Alternatives :
+- **P2** — attendre Unity 6.7 LTS et Stateful Cloud Code (appels sérialisés par joueur). Aucun portefeuille utilisable d'ici là.
+- **P3** — adopter Unity 6.7 bêta maintenant. Déconseillé : bêta, et garanties de commit et de rollback non documentées.
 
 ### A2 — Registre des achats (si A1-R)
 
