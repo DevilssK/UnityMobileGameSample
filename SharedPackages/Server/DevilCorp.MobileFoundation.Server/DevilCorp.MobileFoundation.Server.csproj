@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Reusable Cloud Code building blocks: protected player state, wallet, purchase ledger.
+         Never references a game type: each game's module references this library. -->
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <RootNamespace>DevilCorp.MobileFoundation.Server</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="DevilCorp.MobileFoundation.Server.Tests" />
+        <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="0.0.27" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+</Project>
