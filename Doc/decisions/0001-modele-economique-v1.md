@@ -1,6 +1,6 @@
 # 0001 — Modèle économique V1 : permanents + pub locale, portefeuille protégé plus tard
 
-Date : 2026-10-24 · Statut : acceptée
+Date : 2026-10-24 · Statut : acceptée ; « Economy redeem » caduc (Economy fermé aux nouveaux projets, 403 sur ce projet UGS) — remplaçant proposé dans 0008, à valider
 
 ## Problème
 La moitié des P0 du brief (§5) ne s'appliquent que si une économie protégée existe. Un portefeuille serveur impose tout le §8 (registre idempotent, dépenses serveur, remboursements) et une confirmation S2S des pubs (§9), qui exigent un endpoint HTTPS public dont la disponibilité dans UGS n'est pas vérifiée.

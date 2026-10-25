@@ -2,6 +2,8 @@
 
 État au 2026-10-24, branche `feature/backend-p0-purchases`. Code : `UnityProject/GemHunterUGSCloud/Project/Purchases/` et `Services/StoreService.cs`.
 
+> **Mise à jour du 2026-10-25.** Ce flux repose sur Unity Economy, fermé aux nouveaux projets depuis le 2026-09-08 ; le projet UGS du template répond 403 sur Economy. Il décrit le code actuel, mais **ne peut pas fonctionner sur ce projet UGS**. Le remplaçant (validation Apple/Google dans Cloud Code, registre Cloud Save) est proposé dans `Doc/decisions/0008-remplacement-economy.md`, à valider. Les hypothèses 2 à 9 ci-dessous, propres à Economy, deviendront sans objet avec ce remplacement : ne pas les tester d'ici là.
+
 ## Flux
 
 1. Le client (Unity IAP) appelle `HandlePurchase(productId, receipt, transactionId)` avec l'enveloppe de reçu Unity IAP.
@@ -20,7 +22,7 @@
 | Autres codes (401, 403, 408, 409…) sans statut lisible | `RetryLater` | erreur `PURCHASE_RETRY_LATER` |
 | Store `fake` en `development` | `Simulated` | `PlayerEconomyData` inchangé, **rien n'est crédité** |
 
-Logs : statut, `productId`, store, `CorrelationId`, `transactionId`. Jamais le reçu, le payload ni la signature.
+Logs : statut, `productId`, store, `CorrelationId`, `TransactionLogId` (empreinte SHA-256 tronquée, même algorithme que le package client). Jamais le reçu, le payload, la signature ni l'identifiant de transaction brut, qui est le purchase token sur Google Play avec IAP 5.
 
 ## Inventaire
 
@@ -58,3 +60,5 @@ Aucun achat sandbox Google Play ni App Store, aucun appareil réel, aucun déplo
 ## État du déploiement (constat du 2026-10-24)
 
 Le module Cloud Code déployé sur le projet UGS est encore celui du sample : un achat avec le faux store de l'éditeur, en environnement `production`, a été accepté et a crédité 100 pièces. Les corrections de ce document ne sont actives qu'après déploiement du module (non fait : aucun déploiement sans instruction explicite).
+
+Mise à jour du 2026-10-25 : le module corrigé a été déployé en `production` sur instruction explicite (d'après le code, le faux store y est donc refusé ; non revérifié par un appel réel). Le déploiement des ressources Economy a échoué (403).

@@ -2,6 +2,11 @@
 
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), versionnement [SemVer](https://semver.org/lang/fr/).
 
+## [Non publié]
+
+### Sécurité
+- Les identifiants de transaction ne sont plus journalisés : avec IAP 5, sur Google Play, c'est le purchase token. `StorePurchase.ToString()` et `UnityIapStoreGateway` affichent `TransactionLogId` (12 premiers caractères hexadécimaux du SHA-256), exposé aussi par `StorePurchase.LogId`.
+
 ## [0.2.0] — 2026-10-25
 
 ### Ajouté

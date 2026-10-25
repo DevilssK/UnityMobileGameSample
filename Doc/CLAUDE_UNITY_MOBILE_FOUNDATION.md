@@ -218,6 +218,8 @@ La clé de déduplication utilise l’identifiant autoritatif adapté au store, 
 
 Choisir un propriétaire unique de l’attribution : par exemple Economy redeem, ou un autre mécanisme documenté. Ne pas appeler redeem puis créditer les mêmes ressources manuellement.
 
+> Note du 2026-10-25 : Unity Economy n’accepte plus de nouveaux projets depuis le 2026-09-08 et répond 403 sur le projet UGS du template. Le remplaçant proposé (validation Cloud Code + registre Cloud Save) est en attente de validation : `Doc/decisions/0008-remplacement-economy.md`.
+
 L’idempotence exige un état durable et une gestion de concurrence. Si validation, registre et crédits sont répartis entre plusieurs services, ne pas prétendre disposer d’une transaction atomique globale. Définir une machine à états et une réconciliation des opérations partielles, en réutilisant les garanties natives du fournisseur lorsqu’elles existent.
 
 Une réponse réseau perdue après livraison doit permettre de retrouver le succès antérieur. Un événement « déjà utilisé » par un autre joueur doit rester un refus.

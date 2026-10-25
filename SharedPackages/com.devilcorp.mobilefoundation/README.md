@@ -14,7 +14,7 @@ Gem Hunter (`UnityProject/`) n'est qu'un exemple d'intégration. Ce document suf
 
 - Il ne crédite **jamais** rien côté client. Pour les achats, l'attribution appartient au backend du jeu. Pour les pubs, le jeu applique lui-même sa récompense locale.
 - Il ne fournit pas de backend : chaque jeu implémente `IPurchaseFulfillment`, qui appelle son propre serveur (Cloud Code dans Gem Hunter).
-- Il ne journalise jamais de reçu, de token ni de signature. `StorePurchase.ToString()` n'affiche que le produit et l'identifiant de transaction.
+- Il ne journalise jamais de reçu, de token, de signature ni d'identifiant de transaction (sur Google Play, avec IAP 5, c'est le purchase token). `StorePurchase.ToString()` n'affiche que le produit et `StorePurchase.LogId`, une empreinte non réversible (`TransactionLogId`, même algorithme que le backend de référence).
 - Pas d'abonnements, pas de restauration iOS (`RestoreTransactions`) et pas de portefeuille protégé pour l'instant (voir [Limites connues](#limites-connues)).
 
 ## Installation
@@ -144,7 +144,7 @@ public sealed class MyBackendFulfillment : IPurchaseFulfillment
 }
 ```
 
-- Ne jamais logger `purchase.Receipt`. Logger `purchase` (ToString sûr) ou `purchase.TransactionId`.
+- Ne jamais logger `purchase.Receipt` ni `purchase.TransactionId`. Logger `purchase` (ToString sûr) ou `purchase.LogId`.
 - En cas de doute, répondre `RetryLater` : un `Rejected` à tort laisse le joueur payer sans être livré.
 - Exemple réel : `UnityProject/Assets/GemHunterUGS/Scripts/Store/CloudCodePurchaseFulfillment.cs`.
 
@@ -152,13 +152,15 @@ public sealed class MyBackendFulfillment : IPurchaseFulfillment
 
 Le package suppose un backend qui :
 
-1. Valide le reçu auprès du store et vérifie produit, application et environnement.
-2. Est le **seul** à attribuer (Gem Hunter : Economy `RedeemGooglePlayPurchase` / `RedeemAppleAppStorePurchase`, sans second crédit).
-3. Déduplique sur l'identifiant de transaction du store. Pour le même joueur, il renvoie le résultat déjà livré (le client confirmera alors). Pour un autre joueur, il refuse.
-4. Refuse tout store simulé (`fake`) hors environnement de développement.
+1. Valide le reçu auprès du store et vérifie produit, application, environnement et bénéficiaire. Le produit attribué vient du reçu vérifié, pas d'un identifiant envoyé librement par le client.
+2. Est le **seul** à attribuer, sans second crédit.
+3. Déduplique **durablement** sur l'identifiant de transaction du store (pas de fenêtre glissante qui oublierait les anciennes transactions). Pour le même joueur, il renvoie le résultat déjà livré (le client confirmera alors). Pour un autre joueur, il refuse.
+4. Refuse tout store simulé (`fake`) hors environnement de développement, d'après l'environnement du serveur et jamais d'après un paramètre client.
 5. Distingue refus définitif (→ `Rejected`) et erreur transitoire (→ `RetryLater`).
 
-Implémentation de référence et statuts : `Doc/backend-achats.md`, code dans `UnityProject/GemHunterUGSCloud/Project/Purchases/`.
+`RetryLater` n'est pas une garantie illimitée : Google Play rembourse et révoque automatiquement un achat non confirmé (acknowledged) sous 3 jours ([cycle des achats Google Play](https://developer.android.com/google/play/billing/integrate)). Ne pas proposer d'achats réels tant que le backend ne sait pas les valider.
+
+État du backend de référence (Gem Hunter) : `Doc/backend-achats.md`. Il s'appuie encore sur Unity Economy, fermé aux nouveaux projets depuis le 8 septembre 2026 ; son remplacement est en cours d'arbitrage (`Doc/revue/2026-10-25-realignement-diagnostic.md`).
 
 ## Pubs récompensées
 

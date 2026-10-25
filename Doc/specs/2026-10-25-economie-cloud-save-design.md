@@ -1,6 +1,8 @@
 # Économie joueur sur Cloud Save — design (sous-projet 1/2)
 
-Date : 2026-10-25 · Statut : à relire
+Date : 2026-10-25 · Statut : **suspendue** — à supprimer si l'arbitrage A1 du diagnostic `Doc/revue/2026-10-25-realignement-diagnostic.md` est validé (recommandation : pas de portefeuille serveur, voir proposition 0008).
+
+> Revue du 2026-10-25 : l'objectif « tout Gem Hunter refonctionne sans Economy » ne sert pas le but du socle (fonctions exclues par le brief §2, contradiction avec la décision 0001). Les garanties ci-dessous marquées **[invalidé]** ne sont pas établies ; elles sont conservées seulement pour la traçabilité de la revue.
 
 ## Contexte
 
@@ -18,7 +20,7 @@ Décision utilisateur du 2026-10-25 : tout migrer, avec les technologies et prat
 - Une opération sur le solde ou l'inventaire est atomique par joueur : deux appels simultanés ne peuvent ni dépenser deux fois, ni créditer deux fois, ni perdre une écriture.
 - Le client ne peut pas modifier son solde : les données sont en accès *protected* (le joueur lit, seul le serveur écrit).
 - Les définitions (soldes initiaux, récompenses des packs, pack gratuit) sont des données déployables (Remote Config), pas du code.
-- Achats, en attendant le sous-projet 2 : faux store accepté en `development` uniquement, livraison idempotente par identifiant de transaction ; un reçu Google ou Apple réel répond « réessayer plus tard » (rien n'est perdu, le client garde la transaction en attente).
+- Achats, en attendant le sous-projet 2 : faux store accepté en `development` uniquement, livraison idempotente par identifiant de transaction ; un reçu Google ou Apple réel répond « réessayer plus tard ». **[invalidé]** « rien n'est perdu » est faux : Google rembourse et révoque un achat non confirmé sous 3 jours. Ne pas proposer d'achats réels tant qu'ils ne sont pas validables.
 
 Hors périmètre : validation réelle Google/Apple (sous-projet 2), restauration iOS, abonnements, remboursements, portefeuille multi-devises au-delà de `COIN`.
 
@@ -29,7 +31,7 @@ Hors périmètre : validation réelle Google/Apple (sous-projet 2), restauration
 Vérifié dans le SDK Cloud Code `Com.Unity.Services.CloudCode.Apis` 0.0.27 : `CloudSaveData.SetProtectedItemAsync(…, SetItemBody)` accepte un `writeLock` ; une écriture dont le `writeLock` ne correspond plus à l'élément stocké est refusée (conflit). Toutes les valeurs d'économie d'un joueur vivent dans **un seul élément**, ce qui rend chaque opération atomique sans transaction multi-clés.
 
 Alternatives écartées :
-- Une clé par devise ou par item : plusieurs écritures par opération, donc des états intermédiaires visibles et des échecs partiels.
+- Une clé par devise ou par item : plusieurs écritures par opération, donc des états intermédiaires visibles et des échecs partiels. **[invalidé]** Cloud Save propose un batch protected atomique de 20 clés avec writeLock par clé (`SetProtectedItemBatchAsync`, présent dès Apis 0.0.16) : ce motif de rejet ne tient pas.
 - Un registre global des transactions en données « custom » : pas d'écriture « créer seulement si absent » et 2000 clés au plus par entité. Le sous-projet 2 évite ce besoin en liant chaque transaction au joueur.
 - Un autre fournisseur (PlayFab, Firebase) : exclu par la règle du brief contre les nouveaux fournisseurs.
 
@@ -51,8 +53,8 @@ Alternatives écartées :
 ```
 
 - `schemaVersion` permet les migrations futures : une version inconnue fait échouer l'opération, sans écraser les données.
-- `appliedTransactions` garde les 200 dernières transactions livrées. Au-delà, la protection contre une seconde livraison repose sur le store (consommation et confirmation, sous-projet 2). La valeur 200 est une constante nommée.
-- Absence de l'élément = nouveau joueur. L'état initial est créé depuis le catalogue, dans la même écriture conditionnelle (une création concurrente fait échouer l'une des deux écritures, qui relit et réessaie).
+- `appliedTransactions` garde les 200 dernières transactions livrées. **[invalidé]** Une transaction évincée peut être livrée une seconde fois ; la confirmation du store n'est pas atomique avec l'écriture du backend.
+- Absence de l'élément = nouveau joueur. **[invalidé]** « une création concurrente fait échouer l'une des deux écritures » est faux : une création se fait sans writeLock, ce qui écrase l'état existant ; Cloud Save ne documente aucune écriture « créer seulement si absent ».
 - `PlayerEconomyData` (le contrat vers le client) est calculé depuis ce document : devises, items à quantité non nulle, `HasPurchasedFreeCoinPack`, `InfiniteHeartsExpiryTimestamp`.
 
 ## Catalogue (Remote Config)
@@ -103,13 +105,13 @@ Les autres services (zones, récompenses quotidiennes, coffres, cadeaux) passent
 | Reçu Google/Apple réel | `PURCHASE_RETRY_LATER` jusqu'au sous-projet 2 |
 | Panne Cloud Save / Remote Config | `RETRY_LATER` |
 
-Les erreurs gardent le préfixe actuel (`PURCHASE_REJECTED`…), dont le client dépend déjà. Logs : identifiant joueur et identifiant de transaction autorisés côté serveur ; jamais de reçu.
+Les erreurs gardent le préfixe actuel (`PURCHASE_REJECTED`…), dont le client dépend déjà. Logs : **[invalidé]** l'identifiant de transaction n'est pas journalisable (avec IAP 5 c'est le purchase token Google) ; utiliser `TransactionLogId`. Jamais de reçu, token, signature ni secret.
 
 ## Plateforme et outillage
 
-- Module Cloud Code : `net6.0` → **`net8.0`**. Cloud Code accepte jusqu'à .NET 9 ; .NET 6 n'est plus maintenu depuis novembre 2024. Attention : .NET 8 et .NET 9 arrivent tous deux en fin de support le 10 novembre 2026, et Cloud Code n'annonce pas encore .NET 10. À revoir dès que Unity publie la prise en charge de .NET 10.
+- Module Cloud Code : `net6.0` → **`net8.0`**. Cloud Code accepte jusqu'à .NET 9 ; .NET 6 n'est plus maintenu depuis novembre 2024. Attention : .NET 8 et .NET 9 arrivent tous deux en fin de support le 10 novembre 2026. **[corrigé]** Cloud Code 3.0 (2026-10-23) cible .NET 10 mais exige Unity 6000.7 (en bêta) ; la page des modules de la même doc dit encore « jusqu'à .NET 9 ». Sur la base actuelle (Cloud Code 2.10.4, 6000.6.7f1), le plafond reste .NET 9.
 - `Com.Unity.Services.CloudCode.Apis` 0.0.16 → **0.0.27** (dernière stable), `Core` aligné sur la version qu'elle exige.
-- Déploiement : fenêtre Deployment de l'éditeur, pilotée par la Unity CLI (méthode recommandée par Unity), du module et des fichiers `.rc`. D'abord dans `development`, puis dans `production` sur instruction.
+- Déploiement : fenêtre Deployment de l'éditeur, pilotée par la Unity CLI, du module et des fichiers `.rc`. **[corrigé]** Ce n'est pas la méthode unique : la UGS CLI (compte de service) et le serveur Cloud Code local sont d'autres outils, aux rôles distincts. D'abord dans `development`, puis dans `production` sur instruction.
 - Environnement côté client : le nom codé en dur `production` dans `GameInitializer` devient `development` dans l'éditeur et les builds de développement, `production` sinon, avec un champ sérialisé pour forcer une valeur. Cela corrige le P1 du brief et rend le faux store utilisable dans l'éditeur.
 - Client : retrait du package `com.unity.services.economy` et des fichiers de configuration Economy, après vérification qu'aucune référence n'existe (skill `unity-asset-safety`).
 
