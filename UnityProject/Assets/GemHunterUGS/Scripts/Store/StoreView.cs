@@ -246,7 +246,7 @@ namespace GemHunterUGS.Scripts.Store
             ActivateButtonsForRepurchase();
         }
         
-        private void ActivatePurchaseButton(Button button)
+        public void ActivatePurchaseButton(Button button)
         {
             button.SetEnabled(true);
         }
@@ -256,7 +256,7 @@ namespace GemHunterUGS.Scripts.Store
             button.SetEnabled(false);
         }
 
-        private void ActivateButtonsForRepurchase()
+        public void ActivateButtonsForRepurchase()
         {
             // Not the free Coin Pack though :) -- even if clicked, this can't be redeemed again
             ActivatePurchaseButton(BundlePackPurchaseButton);

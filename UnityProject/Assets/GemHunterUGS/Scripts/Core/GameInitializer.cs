@@ -1,6 +1,10 @@
 using System;
+using System.Threading;
 using UnityEngine;
 using System.Threading.Tasks;
+using DevilCorp.MobileFoundation.Purchases;
+using DevilCorp.MobileFoundation.Purchases.UnityIap;
+using GemHunterUGS.Scripts.Store;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Core.Environments;
@@ -113,6 +117,11 @@ namespace GemHunterUGS.Scripts.Core
             var economyManager = new PlayerEconomyManager(localStorageSystem);
             var economyManagerClient = new PlayerEconomyManagerClient(dataManagerClient, bindingsProvider);
             
+            // Purchases: created here, not in the hub scene, so purchases paid in a previous session are
+            // recovered at startup and retried on every sign-in.
+            var purchaseService = CreatePurchaseService(bindingsProvider, economyManagerClient, authenticationManager);
+            GameSystemLocator.Register<IPurchaseService>(purchaseService);
+
             // Areas
             var areaManager = new AreaManager(dataManager, economyManager);
             var areaManagerClient = new AreaManagerClient(dataManagerClient, bindingsProvider);
@@ -142,6 +151,46 @@ namespace GemHunterUGS.Scripts.Core
             gameManager.Initialize(authenticationManager, sceneLoader);
         }
         
+        private static IPurchaseService CreatePurchaseService(
+            CloudBindingsProvider bindingsProvider,
+            PlayerEconomyManagerClient economyManagerClient,
+            PlayerAuthenticationManager authenticationManager)
+        {
+            var storeGateway = new UnityIapStoreGateway(GemHunterProductCatalog.All, Logger.Log);
+            var fulfillment = new CloudCodePurchaseFulfillment(bindingsProvider, economyManagerClient, authenticationManager);
+            var purchaseService = new PurchaseCoordinator(storeGateway, fulfillment, Logger.Log);
+
+            authenticationManager.SignedIn += () => RetryPendingPurchases(purchaseService);
+            // An expired token makes validation fail (RetryLater); the resumed session must retry it too.
+            authenticationManager.SignedInAfterTokenExpiry += () => RetryPendingPurchases(purchaseService);
+            ConnectStore(storeGateway);
+            return purchaseService;
+        }
+
+        private static async void ConnectStore(UnityIapStoreGateway storeGateway)
+        {
+            try
+            {
+                await storeGateway.ConnectAsync();
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning($"Store connection failed, purchases unavailable: {e.Message}");
+            }
+        }
+
+        private static async void RetryPendingPurchases(IPurchaseService purchaseService)
+        {
+            try
+            {
+                await purchaseService.RetryPendingFulfillmentsAsync(CancellationToken.None);
+            }
+            catch (Exception e)
+            {
+                Logger.LogException(e);
+            }
+        }
+
         /// <summary>
         /// Registers all core game systems with the GameSystemLocator.
         /// This provides centralized access to these systems throughout the game.

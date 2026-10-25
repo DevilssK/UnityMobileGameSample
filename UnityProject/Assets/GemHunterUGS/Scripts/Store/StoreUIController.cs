@@ -87,6 +87,8 @@ namespace GemHunterUGS.Scripts.Store
             m_StoreView.CoinPackFreeButton.clicked += HandleCoinPackFreePurchaseClick;
             
             m_StoreClient.SuccessfullyPurchased += HandlePurchaseSuccess;
+            m_StoreClient.PurchaseNotDelivered += HandlePurchaseNotDelivered;
+            m_StoreClient.PurchaseMessage += m_StoreView.ShowPurchaseSuccessPopUp;
             m_StoreView.ClosePopUpButton.clicked += HandleClosePurchaseSuccessPopup;
             
             SetupCoinPackButton(m_StoreView.CoinPack100Button, 100);
@@ -115,20 +117,21 @@ namespace GemHunterUGS.Scripts.Store
         
         private void HandleBundlePackPurchaseClick()
         {
-            ClickPurchaseBundlePack?.Invoke();
+            // Disable before raising: a purchase that ends synchronously (store not ready) re-enables it.
             m_StoreView.DeactivatePurchaseButton(m_StoreView.BundlePackPurchaseButton);
+            ClickPurchaseBundlePack?.Invoke();
         }
 
         private void HandleMegaPackPurchaseClick()
         {
-            ClickPurchaseMegaPack?.Invoke();
             m_StoreView.DeactivatePurchaseButton(m_StoreView.MegaPackPurchaseButton);
+            ClickPurchaseMegaPack?.Invoke();
         }
 
         private void HandleCoinPackPurchaseClick(int amount, Button button)
         {
-            ClickPurchaseCoinPack?.Invoke(amount);
             m_StoreView.DeactivatePurchaseButton(button);
+            ClickPurchaseCoinPack?.Invoke(amount);
         }
         
         private void HandleCoinPackFreePurchaseClick()
@@ -138,8 +141,8 @@ namespace GemHunterUGS.Scripts.Store
                 Debug.LogWarning($"Player has already purchased free coin pack!");
                 return;
             }
-            ClickPurchaseFreeCoinPack?.Invoke();
             m_StoreView.DeactivatePurchaseButton(m_StoreView.CoinPackFreeButton);
+            ClickPurchaseFreeCoinPack?.Invoke();
         }
         
         private void HandleCloseStoreMenuButtonClicked()
@@ -167,6 +170,16 @@ namespace GemHunterUGS.Scripts.Store
         {
             string message = $"Successfully purchased {productName}";
             m_StoreView.ShowPurchaseSuccessPopUp(message);
+        }
+
+        // Every terminal path unlocks the buttons the click disabled: no purchase can leave the store frozen.
+        private void HandlePurchaseNotDelivered()
+        {
+            m_StoreView.ActivateButtonsForRepurchase();
+            if (!m_PlayerEconomyManager.PlayerEconomyDataLocal.HasPurchasedFreeCoinPack)
+            {
+                m_StoreView.ActivatePurchaseButton(m_StoreView.CoinPackFreeButton);
+            }
         }
 
         private void HandleClosePurchaseSuccessPopup()
@@ -198,7 +211,10 @@ namespace GemHunterUGS.Scripts.Store
             
             m_PlayerEconomyManager.InfiniteHeartStatusUpdated -= HandleInfiniteHeartStatus;
             m_StoreView.ClosePopUpButton.clicked -= HandleClosePurchaseSuccessPopup;
-            
+            m_StoreClient.SuccessfullyPurchased -= HandlePurchaseSuccess;
+            m_StoreClient.PurchaseNotDelivered -= HandlePurchaseNotDelivered;
+            m_StoreClient.PurchaseMessage -= m_StoreView.ShowPurchaseSuccessPopUp;
+
             foreach (var kvp in m_CoinPackHandlers)
             {
                 if (kvp.Key != null)  // Check if button still exists

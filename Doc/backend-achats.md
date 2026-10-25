@@ -41,7 +41,7 @@ Verrou d'abord (item `FREE_COIN_PACK_CLAIM`, défini dans `Assets/UGSConfigs/FRE
 
 | # | Hypothèse | Procédure |
 | --- | --- | --- |
-| 1 | Format du reçu Unity IAP 4 (`Store`, `TransactionID`, `Payload` ; payload Google `json`/`signature` ; Apple base64 ; éditeur `fake`) | Journaliser **localement** (build de dev, jamais en production) les clés présentes, sans les valeurs |
+| 1 | ~~Format du reçu~~ **Vérifié** dans le code d'Unity IAP 5.4.4 (`UnifiedReceiptFormatter`, `OrderInfo`) : `{Store, TransactionID, Payload}`, Google `json`/`signature`, Apple reçu d'application, éditeur `fake` | — |
 | 2 | `VALID_NOT_REDEEMED` signifie « rien n'a été accordé » | Achat sandbox, rejouer le redeem, observer le statut et le portefeuille |
 | 3 | Deux redeems simultanés du même reçu : un seul `VALID` | Deux appels parallèles en staging avec le même reçu sandbox |
 | 4 | Economy renvoie `409` sur un `playersInventoryItemId` existant | Deux `HandleFreeCoinPackPurchase` parallèles en staging |
@@ -54,3 +54,7 @@ Verrou d'abord (item `FREE_COIN_PACK_CLAIM`, défini dans `Assets/UGSConfigs/FRE
 ## Non vérifié
 
 Aucun achat sandbox Google Play ni App Store, aucun appareil réel, aucun déploiement Cloud Code. Les tests (`dotnet test UnityProject/GemHunterUGSCloud/Tests`) utilisent des doublures de l'API Economy : ils prouvent la logique du module, pas le comportement réel d'Economy ni des stores.
+
+## État du déploiement (constat du 2026-10-24)
+
+Le module Cloud Code déployé sur le projet UGS est encore celui du sample : un achat avec le faux store de l'éditeur, en environnement `production`, a été accepté et a crédité 100 pièces. Les corrections de ce document ne sont actives qu'après déploiement du module (non fait : aucun déploiement sans instruction explicite).
