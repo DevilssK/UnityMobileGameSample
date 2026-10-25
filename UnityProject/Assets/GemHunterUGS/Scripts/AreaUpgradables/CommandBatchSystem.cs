@@ -167,7 +167,8 @@ namespace GemHunterUGS.Scripts.AreaUpgradables
         {
             try
             {
-                var commandReward = await m_BindingsProvider.AreaCompletion.ProcessAreaCompleteCommandBatch(timeSignedKeys, Guid.NewGuid().ToString("N"));
+                var operationId = Guid.NewGuid().ToString("N");
+                var commandReward = await CloudRetry.RunAsync(() => m_BindingsProvider.AreaCompletion.ProcessAreaCompleteCommandBatch(timeSignedKeys, operationId));
                 AreaCompleteRewardsReceived?.Invoke(commandReward);
             }
             catch (Exception e)

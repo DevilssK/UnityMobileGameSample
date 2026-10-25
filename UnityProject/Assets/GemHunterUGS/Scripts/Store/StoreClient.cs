@@ -167,7 +167,8 @@ namespace GemHunterUGS.Scripts.Store
         {
             try
             {
-                var economyData = await m_BindingsProvider.Store.HandleFreeCoinPackPurchase();
+                // Claimed at most once per player on the server, so retrying is safe.
+                var economyData = await CloudRetry.RunAsync(() => m_BindingsProvider.Store.HandleFreeCoinPackPurchase());
                 m_PlayerEconomyClient.HandleEconomyUpdate(economyData);
             }
             catch (Exception e)

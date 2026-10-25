@@ -84,7 +84,11 @@ namespace GemHunterUGS.Scripts.DailyRewards
             }
             catch (Exception e)
             {
+                // Not retried: a later retry could claim the next day without the player asking.
+                // Resync instead, which drops the reward already shown locally.
                 Logger.LogError($"Failed to claim daily reward: {e.Message}");
+                await GetDailyRewardsStatus();
+                m_PlayerEconomyManagerClient.SyncEconomyData();
             }
         }
 

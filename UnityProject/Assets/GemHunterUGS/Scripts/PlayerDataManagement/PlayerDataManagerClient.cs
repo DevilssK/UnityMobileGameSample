@@ -184,11 +184,32 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             PlayerDataUpdated?.Invoke(m_CloudPlayerData);
         }
         
-        private async void HandleLevelWon()
+        /// <summary>
+        /// Replaces optimistic local values with the server state, after a call that could not be applied.
+        /// </summary>
+        public async Task ResyncFromServerAsync()
         {
             try
             {
-                m_CloudPlayerData = await m_BindingsProvider.PlayerData.HandleLevelWon(Guid.NewGuid().ToString("N"));
+                var playerData = await m_BindingsProvider.PlayerData.GetPlayerData();
+                if (playerData != null)
+                {
+                    m_CloudPlayerData = playerData;
+                    PlayerDataUpdated?.Invoke(m_CloudPlayerData);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Resync from server failed: {ex.Message}");
+            }
+        }
+
+        private async void HandleLevelWon()
+        {
+            var operationId = Guid.NewGuid().ToString("N");
+            try
+            {
+                m_CloudPlayerData = await CloudRetry.RunAsync(() => m_BindingsProvider.PlayerData.HandleLevelWon(operationId));
                 if (m_CloudPlayerData != null)
                 {
                     Logger.LogDemo("⭐☁ Added star in cloud code");
@@ -199,21 +220,19 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
                     Logger.LogWarning("HandleLevelWon returned null data");
                 }
             }
-            catch (CloudCodeException ex)
-            {
-                Logger.LogError($"CloudCode error handling level won: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                Logger.LogError($"Unexpected error handling level won: {ex.Message}");
+                Logger.LogError($"Level won not applied by the server: {ex.Message}");
+                await ResyncFromServerAsync();
             }
         }
         
         private async void HandleReplayLevelLost()
         {
+            var operationId = Guid.NewGuid().ToString("N");
             try
             {
-                var playerData = await m_BindingsProvider.PlayerData.HandleLevelLost(Guid.NewGuid().ToString("N"));
+                var playerData = await CloudRetry.RunAsync(() => m_BindingsProvider.PlayerData.HandleLevelLost(operationId));
 
                 if (playerData == null)
                 {
@@ -235,13 +254,10 @@ namespace GemHunterUGS.Scripts.PlayerDataManagement
             
                 PlayerDataUpdated?.Invoke(m_CloudPlayerData);
             }
-            catch (CloudCodeException ex)
-            {
-                Logger.LogError($"CloudCode error handling level lost: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                Logger.LogError($"Unexpected error handling level lost: {ex.Message}");
+                Logger.LogError($"Level lost not applied by the server: {ex.Message}");
+                await ResyncFromServerAsync();
             }
         }
         
