@@ -35,3 +35,16 @@ Source de vérité : `UnityProject/Packages/manifest.json` et `packages-lock.jso
 | Serveur Cloud Code local | non utilisé | Exécution locale des modules ; ne prouve pas les politiques du service distant | 2026-10-25 |
 
 À vérifier par un build : adaptateurs réseaux LevelPlay, build Android avec l’API cible 36 (bord à bord, retour prédictif sur appareil), iOS minimum et version de Xcode.
+
+## Problèmes connus
+
+### Bruit graphique en Vulkan sur Mali-G610 (2026-10-26)
+
+- **Symptôme :** dans le hub et les niveaux, la scène 3D est couverte d’un bruit par blocs qui change à chaque image ; les zones redessinées par une action de jeu redeviennent nettes un moment. L’interface UI Toolkit n’est pas touchée.
+- **Appareil :** Nothing Phone A142 (MT6886, Mali-G610 MC4, pilote r38p1), Android 15, build de développement, Unity 6000.6.7f1, URP avec le Renderer 2D.
+- **Preuve :** le même build en OpenGL ES 3 seul (API graphiques automatiques désactivées) s’affiche sans défaut, dans le hub comme en niveau. Le défaut est donc propre au chemin Vulkan.
+- **Contournement disponible, non appliqué :** garder Vulkan par défaut et forcer OpenGL ES sur les appareils concernés avec un *Vulkan hardware profile* (méthode recommandée par la doc Unity 6000.6 ; les *Vulkan Device Filtering Assets* et les listes Allow/Deny des Player settings sont plus anciens). Solution de repli plus large : OpenGL ES 3 seul sur Android, au prix de Vulkan sur tous les appareils.
+- **Cause :** la *FullScreenPassRendererFeature* d’URP 17.6 (effet sous-marin `UnderwaterFullScreenMat` du Renderer 2D, option *Fetch Color Buffer*) copie la couleur caméra avec `RenderGraph.AddBlitPass`, qui choisit `AddCopyPass` (lecture du framebuffer par *input attachment*) quand source et destination ont la même taille. Sur ce Mali en Vulkan, cette copie rend un contenu indéfini dans les tuiles inchangées. Tests à une variable, sur l’appareil : passe désactivée → net ; point d’injection avancé (550) → bruit ; écriture de profondeur du matériau à 0 → bruit ; même passe avec copie par blit échantillonné → net, effet visible.
+- **Correction (branche `investigate/vulkan-noise`) :** `SampledCopyFullScreenFeature` (`Assets/GemHunterMatch/Scripts/Rendering/`) remplace la feature d’URP dans `Renderer2D.asset` : même matériau, même point d’injection, copie par `Blitter.BlitTexture`. Vérifié en Vulkan sur l’appareil (hub et niveau nets). Non vérifié : OpenGL ES avec cette feature, iOS (Metal), éditeur.
+- **Statut :** corrigé côté projet. Le défaut d’URP ou du pilote mérite un rapport de bug à Unity (non fait). OpenGL ES reste le repli si un autre effet plein écran retombe dans ce cas.
+- **Sources :** [Graphics API hardware profile settings (6000.6)](https://docs.unity.com/en-us/engine/6000.6/manual/platform-specific/android/developing/graphics/vulkan-hardware-profiles/graphics-api), [Vulkan Device Filtering Asset reference (6000.6)](https://docs.unity.com/en-us/engine/6000.6/manual/platform-specific/android/developing/graphics/vulkanapi-graphics-jobs-configuration/vulkan-device-filter-list-asset-reference).
