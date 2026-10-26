@@ -35,3 +35,14 @@ Source de vérité : `UnityProject/Packages/manifest.json` et `packages-lock.jso
 | Serveur Cloud Code local | non utilisé | Exécution locale des modules ; ne prouve pas les politiques du service distant | 2026-10-25 |
 
 À vérifier par un build : adaptateurs réseaux LevelPlay, build Android avec l’API cible 36 (bord à bord, retour prédictif sur appareil), iOS minimum et version de Xcode.
+
+## Problèmes connus
+
+### Bruit graphique en Vulkan sur Mali-G610 (2026-10-26)
+
+- **Symptôme :** dans le hub et les niveaux, la scène 3D est couverte d’un bruit par blocs qui change à chaque image ; les zones redessinées par une action de jeu redeviennent nettes un moment. L’interface UI Toolkit n’est pas touchée.
+- **Appareil :** Nothing Phone A142 (MT6886, Mali-G610 MC4, pilote r38p1), Android 15, build de développement, Unity 6000.6.7f1, URP avec le Renderer 2D.
+- **Preuve :** le même build en OpenGL ES 3 seul (API graphiques automatiques désactivées) s’affiche sans défaut, dans le hub comme en niveau. Le défaut est donc propre au chemin Vulkan.
+- **Contournement disponible, non appliqué :** garder Vulkan par défaut et forcer OpenGL ES sur les appareils concernés avec un *Vulkan hardware profile* (méthode recommandée par la doc Unity 6000.6 ; les *Vulkan Device Filtering Assets* et les listes Allow/Deny des Player settings sont plus anciens). Solution de repli plus large : OpenGL ES 3 seul sur Android, au prix de Vulkan sur tous les appareils.
+- **Statut :** recherche de la cause dans les réglages Vulkan et URP en cours (option C). Revenir à OpenGL ES si elle n’aboutit pas.
+- **Sources :** [Graphics API hardware profile settings (6000.6)](https://docs.unity.com/en-us/engine/6000.6/manual/platform-specific/android/developing/graphics/vulkan-hardware-profiles/graphics-api), [Vulkan Device Filtering Asset reference (6000.6)](https://docs.unity.com/en-us/engine/6000.6/manual/platform-specific/android/developing/graphics/vulkanapi-graphics-jobs-configuration/vulkan-device-filter-list-asset-reference).
