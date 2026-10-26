@@ -26,7 +26,13 @@ namespace GemHunterUGS.Scripts.Core
             if (Match3.GameManager.Instance == null)
             {
                 Instantiate(m_GameManagerPrefab);
-                m_GameEventSystem = GetComponentInChildren<EventSystem>();
+            }
+
+            // Take the match-3 manager's own EventSystem. Searching this object's children found the UGS one
+            // again and re-enabled it: two active EventSystems, and the level UI received no pointer events.
+            if (m_GameEventSystem == null)
+            {
+                m_GameEventSystem = Match3.GameManager.Instance.GetComponentInChildren<EventSystem>(true);
             }
 
             if (m_GameEventSystem != null)
